@@ -1,0 +1,38 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.25)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.05)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="40" height="40" rx="10" fill="url(#bg)"/>
+  <!-- Inner highlight -->
+  <rect x="0.5" y="0.5" width="39" height="39" rx="9.5" stroke="url(#glow)" stroke-width="1"/>
+
+  <!-- Left pillar of H (briefcase style — slightly wider at base) -->
+  <rect x="6.5" y="8" width="6" height="24" rx="2" fill="white" opacity="0.95"/>
+
+  <!-- Right pillar of H (neural network dots embedded) -->
+  <rect x="27.5" y="8" width="6" height="24" rx="2" fill="white" opacity="0.95"/>
+
+  <!-- Neural dots on right pillar -->
+  <circle cx="30.5" cy="12" r="1.8" fill="#4338CA"/>
+  <circle cx="30.5" cy="20" r="1.8" fill="#3B82F6" opacity="0.8"/>
+  <circle cx="30.5" cy="28" r="1.8" fill="#06B6D4" opacity="0.6"/>
+
+  <!-- H crossbar as upward arrow (career growth) -->
+  <!-- From left pillar (12.5, 22) → peak center (20, 14) → right pillar (27.5, 22) -->
+  <path d="M12.5 22 L20 13 L27.5 22"
+        stroke="white"
+        stroke-width="3.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+        opacity="0.95"/>
+</svg>
