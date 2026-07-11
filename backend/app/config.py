@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
+    # System SMTP — used for password-reset OTP emails
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_ENCRYPTION: str = "TLS"   # TLS | SSL | NONE
+    SMTP_USER: str = ""            # your Gmail address
+    SMTP_PASS: str = ""            # Gmail App Password
+    SMTP_FROM_NAME: str = "HireFlow AI"
+    SMTP_FROM_EMAIL: str = ""      # same as SMTP_USER usually
+
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_S3_BUCKET: str = "hireflow-resumes"

@@ -12,10 +12,8 @@ from email.mime.multipart import MIMEMultipart
 
 from app.database import get_db
 from app.models.user import User
-from app.models.smtp import SmtpConfig
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut
 from app.utils.auth import hash_password, verify_password, create_token, get_current_user
-from app.utils.encryption import decrypt_password
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -44,55 +42,40 @@ def _make_otp() -> str:
     return str(random.randint(100000, 999999))
 
 
-async def _find_smtp(email: str, db: AsyncSession) -> SmtpConfig | None:
-    """Return SMTP config: try user's own first, fall back to any admin config."""
-    user_res = await db.execute(select(User).where(User.email == email))
-    user = user_res.scalar_one_or_none()
-
-    if user:
-        res = await db.execute(
-            select(SmtpConfig).where(SmtpConfig.user_id == user.id).limit(1)
+def _send_otp_email(to_email: str, name: str, otp: str) -> None:
+    """Send OTP using system SMTP credentials from .env (SMTP_USER / SMTP_PASS)."""
+    if not settings.SMTP_USER or not settings.SMTP_PASS:
+        raise RuntimeError(
+            "System SMTP not configured. Set SMTP_USER and SMTP_PASS in the backend .env file."
         )
-        smtp = res.scalar_one_or_none()
-        if smtp:
-            return smtp
 
-    # Fallback: use admin's SMTP
-    admin_res = await db.execute(select(User).where(User.role == "admin").limit(1))
-    admin = admin_res.scalar_one_or_none()
-    if admin:
-        res = await db.execute(
-            select(SmtpConfig).where(SmtpConfig.user_id == admin.id).limit(1)
-        )
-        return res.scalar_one_or_none()
-
-    return None
-
-
-def _send_otp_email(smtp: SmtpConfig, to_email: str, name: str, otp: str) -> None:
-    password = decrypt_password(smtp.password_encrypted)
+    from_addr = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
     context = ssl.create_default_context()
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "HireFlow — Your Password Reset OTP"
-    msg["From"] = f"{smtp.from_name} <{smtp.from_email}>"
+    msg["From"] = f"{settings.SMTP_FROM_NAME} <{from_addr}>"
     msg["To"] = to_email
 
-    html = f"""
-<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#0a0f1e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0">
     <tr><td align="center" style="padding:40px 16px;">
-      <table width="480" cellpadding="0" cellspacing="0" style="background:#111827;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+      <table width="480" cellpadding="0" cellspacing="0"
+             style="background:#111827;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
         <tr>
           <td style="background:linear-gradient(135deg,#4f46e5,#6366f1);padding:28px 32px;">
-            <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">HireFlow <span style="font-size:13px;font-weight:400;opacity:.7;">AI</span></h1>
+            <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">
+              HireFlow <span style="font-size:13px;font-weight:400;opacity:.7;">AI</span>
+            </h1>
           </td>
         </tr>
         <tr>
           <td style="padding:32px;">
-            <p style="color:rgba(255,255,255,0.7);margin:0 0 8px;">Hi <strong style="color:#fff;">{name}</strong>,</p>
+            <p style="color:rgba(255,255,255,0.7);margin:0 0 8px;">
+              Hi <strong style="color:#fff;">{name}</strong>,
+            </p>
             <p style="color:rgba(255,255,255,0.5);margin:0 0 24px;font-size:14px;">
               We received a request to reset your HireFlow password. Use the OTP below:
             </p>
@@ -100,15 +83,15 @@ def _send_otp_email(smtp: SmtpConfig, to_email: str, name: str, otp: str) -> Non
               <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#818cf8;">{otp}</span>
             </div>
             <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0;">
-              ⏱ This OTP is valid for <strong style="color:rgba(255,255,255,0.6);">10 minutes</strong>.
-              If you didn't request a password reset, you can safely ignore this email.
+              This OTP is valid for <strong style="color:rgba(255,255,255,0.6);">10 minutes</strong>.
+              If you didn't request a password reset, ignore this email.
             </p>
           </td>
         </tr>
         <tr>
           <td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.05);">
             <p style="color:rgba(255,255,255,0.2);font-size:12px;margin:0;">
-              Sent by HireFlow AI · Do not reply to this email.
+              Sent by HireFlow AI &middot; Do not reply to this email.
             </p>
           </td>
         </tr>
@@ -116,18 +99,18 @@ def _send_otp_email(smtp: SmtpConfig, to_email: str, name: str, otp: str) -> Non
     </td></tr>
   </table>
 </body>
-</html>
-"""
+</html>"""
+
     msg.attach(MIMEText(html, "html"))
 
-    if smtp.encryption == "SSL":
-        server = smtplib.SMTP_SSL(smtp.host, smtp.port, context=context, timeout=15)
+    if settings.SMTP_ENCRYPTION == "SSL":
+        server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, context=context, timeout=15)
     else:
-        server = smtplib.SMTP(smtp.host, smtp.port, timeout=15)
-        if smtp.encryption == "TLS":
+        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+        if settings.SMTP_ENCRYPTION == "TLS":
             server.starttls(context=context)
 
-    server.login(smtp.username, password)
+    server.login(settings.SMTP_USER, settings.SMTP_PASS)
     server.send_message(msg)
     server.quit()
 
@@ -179,20 +162,13 @@ async def me(user: User = Depends(get_current_user)):
 
 @router.post("/forgot-password")
 async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    """Generate OTP and send to user's email via their SMTP config (or admin's)."""
+    """Generate a 6-digit OTP and send it via the system SMTP configured in .env."""
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
-    # Always return same message — don't reveal whether email exists
+    # Always return the same message — don't reveal whether email exists
     if not user:
         return {"message": "If that email is registered, an OTP has been sent."}
-
-    smtp = await _find_smtp(body.email, db)
-    if not smtp:
-        raise HTTPException(
-            status_code=503,
-            detail="Email service not configured. Ask your admin to set up an SMTP account first.",
-        )
 
     otp = _make_otp()
     _otp_store[body.email] = {
@@ -202,7 +178,10 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
     }
 
     try:
-        _send_otp_email(smtp, user.email, user.name, otp)
+        _send_otp_email(user.email, user.name, otp)
+    except RuntimeError as e:
+        _otp_store.pop(body.email, None)
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         _otp_store.pop(body.email, None)
         raise HTTPException(status_code=502, detail=f"Failed to send email: {str(e)}")
@@ -224,7 +203,6 @@ async def verify_otp(body: VerifyOTPRequest):
     if entry["otp"] != body.otp.strip():
         raise HTTPException(status_code=400, detail="Incorrect OTP. Please try again.")
 
-    # Mark verified so reset-password endpoint can trust it
     _otp_store[body.email]["verified"] = True
 
     reset_token = jwt.encode(
@@ -241,7 +219,7 @@ async def verify_otp(body: VerifyOTPRequest):
 
 @router.post("/reset-password")
 async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    """Set new password using the reset_token from verify-otp."""
+    """Set a new password using the reset_token from /verify-otp."""
     try:
         payload = jwt.decode(body.reset_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         if payload.get("type") != "pwd_reset":
