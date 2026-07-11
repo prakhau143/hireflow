@@ -15,7 +15,7 @@ import Analytics from '@/pages/Analytics'
 import Settings from '@/pages/Settings'
 import ImportJobs from '@/pages/ImportJobs'
 import Onboarding from '@/pages/Onboarding'
-import Login, { Register } from '@/pages/auth/Login'
+import Login, { Register, ForgotPassword } from '@/pages/auth/Login'
 import { useAppStore } from '@/store/useAppStore'
 
 const queryClient = new QueryClient({
@@ -63,6 +63,7 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Auth-required routes */}
           <Route element={<AuthGuard />}>
