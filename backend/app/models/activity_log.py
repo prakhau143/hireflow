@@ -1,6 +1,7 @@
 from sqlalchemy import String, Text, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime, timezone
+from typing import Optional, Dict
 from app.database import Base
 import uuid
 
@@ -13,6 +14,6 @@ class ActivityLog(Base):
 
     action: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
-    metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    extra_data: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))

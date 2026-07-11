@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Briefcase, MapPin, Upload, Plus, X, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { User, Briefcase, MapPin, Upload, X, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import api from '@/lib/api'
 import Logo from '@/components/ui/Logo'
+import SkillsMultiSelect from '@/components/ui/SkillsMultiSelect'
+import SearchableMultiSelect from '@/components/ui/SearchableMultiSelect'
+import { POPULAR_ROLES, ALL_ROLES, isRoleInMasterList } from '@/data/roles'
+import { POPULAR_LOCATIONS, ALL_LOCATIONS, isLocationInMasterList } from '@/data/locations'
 import toast from 'react-hot-toast'
 
 const STEPS = ['Profile', 'Experience', 'Preferences', 'Resume']
@@ -27,48 +31,123 @@ export default function Onboarding() {
     preferred_roles: [] as string[],
     preferred_locations: [] as string[],
   })
-  const [skillInput, setSkillInput] = useState('')
-  const [roleInput, setRoleInput] = useState('')
-  const [locInput, setLocInput] = useState('')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [uploadingResume, setUploadingResume] = useState(false)
 
   function setField(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
-  function addTag(field: 'skills' | 'preferred_roles' | 'preferred_locations', value: string) {
-    const trimmed = value.trim()
-    if (!trimmed) return
-    setForm((f) => ({ ...f, [field]: [...f[field], trimmed] }))
-  }
-
-  function removeTag(field: 'skills' | 'preferred_roles' | 'preferred_locations', idx: number) {
-    setForm((f) => ({ ...f, [field]: f[field].filter((_, i) => i !== idx) }))
-  }
-
   async function handleFinish() {
+    // Validate all mandatory fields
+    if (!form.phone.trim()) {
+      toast.error('Please enter your phone number')
+      setStep(0)
+      return
+    }
+    if (!form.current_role.trim()) {
+      toast.error('Please enter your current role')
+      setStep(0)
+      return
+    }
+    if (!form.current_location.trim()) {
+      toast.error('Please enter your current location')
+      setStep(0)
+      return
+    }
+    if (!form.linkedin_url.trim()) {
+      toast.error('Please enter your LinkedIn URL')
+      setStep(0)
+      return
+    }
+    if (!form.github_url.trim()) {
+      toast.error('Please enter your GitHub URL')
+      setStep(0)
+      return
+    }
+    if (!form.portfolio_url.trim()) {
+      toast.error('Please enter your portfolio URL')
+      setStep(0)
+      return
+    }
+    if (!form.years_experience.trim()) {
+      toast.error('Please enter your years of experience')
+      setStep(1)
+      return
+    }
+    if (form.skills.length === 0) {
+      toast.error('Please select at least one skill')
+      setStep(1)
+      return
+    }
+    if (form.preferred_roles.length === 0) {
+      toast.error('Please select at least one preferred role')
+      setStep(2)
+      return
+    }
+    if (form.preferred_locations.length === 0) {
+      toast.error('Please select at least one preferred location')
+      setStep(2)
+      return
+    }
+    if (!resumeFile) {
+      toast.error('Please upload your resume')
+      setStep(3)
+      return
+    }
+
     setLoading(true)
     try {
-      const payload = {
-        ...form,
-        years_experience: form.years_experience ? parseInt(form.years_experience) : null,
-      }
-      const { data } = await api.post('/api/users/onboarding', payload)
-      setUser(data)
+      // Step 1: Upload resume
+      setUploadingResume(true)
+      const fd = new FormData()
+      fd.append('file', resumeFile)
+      const resumeResponse = await api.post('/api/resumes/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const uploadedResume = resumeResponse.data
+      setUploadingResume(false)
 
-      if (resumeFile) {
-        const fd = new FormData()
-        fd.append('file', resumeFile)
-        await api.post('/api/resumes/upload', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
+      // If resume has strong_skills, auto-select them
+      if (uploadedResume?.strong_skills && uploadedResume.strong_skills.length > 0) {
+        const detectedSkills = uploadedResume.strong_skills
+        const newSkills = [...new Set([...form.skills, ...detectedSkills])]
+
+        // Limit to 30 skills
+        const finalSkills = newSkills.slice(0, 30)
+
+        if (finalSkills.length > form.skills.length) {
+          setForm((f) => ({ ...f, skills: finalSkills }))
+          setStep(1)
+          toast.success(`We detected ${detectedSkills.length} skills from your resume! Please review them.`)
+          setLoading(false)
+          return
+        }
       }
+
+      // Step 2: Complete onboarding with all data
+      const payload = {
+        phone: form.phone,
+        current_role: form.current_role,
+        current_location: form.current_location,
+        linkedin_url: form.linkedin_url,
+        github_url: form.github_url,
+        portfolio_url: form.portfolio_url,
+        years_experience: parseInt(form.years_experience),
+        skills: form.skills,
+        preferred_roles: form.preferred_roles,
+        preferred_locations: form.preferred_locations,
+        resume_id: uploadedResume.id,
+      }
+
+      const { data } = await api.post('/api/users/onboarding/complete', payload)
+      setUser(data.user)
 
       toast.success('Profile complete! Welcome to HireFlow.')
-      navigate('/')
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to save profile')
-    } finally {
+      navigate(data.redirect || '/')
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } }
+      toast.error(error.response?.data?.detail || 'Failed to save profile')
       setLoading(false)
     }
   }
@@ -129,15 +208,12 @@ export default function Onboarding() {
                   placeholder="3"
                 />
                 <div className="mt-4">
-                  <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Skills</label>
-                  <TagInput
-                    placeholder="Type a skill and press Enter (e.g. React)"
-                    value={skillInput}
-                    onChange={setSkillInput}
-                    onAdd={() => { addTag('skills', skillInput); setSkillInput('') }}
-                    tags={form.skills}
-                    onRemove={(i) => removeTag('skills', i)}
-                    color="indigo"
+                  <SkillsMultiSelect
+                    value={form.skills}
+                    onChange={(skills) => setForm((f) => ({ ...f, skills }))}
+                    placeholder="Search and select skills..."
+                    maxSkills={30}
+                    required={true}
                   />
                 </div>
               </StepPanel>
@@ -146,47 +222,53 @@ export default function Onboarding() {
             {step === 2 && (
               <StepPanel key="preferences" title="Job Preferences" subtitle="What are you looking for?" icon={MapPin}>
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Preferred Roles</label>
-                    <TagInput
-                      placeholder="e.g. Frontend Engineer, Full Stack"
-                      value={roleInput}
-                      onChange={setRoleInput}
-                      onAdd={() => { addTag('preferred_roles', roleInput); setRoleInput('') }}
-                      tags={form.preferred_roles}
-                      onRemove={(i) => removeTag('preferred_roles', i)}
-                      color="cyan"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Preferred Locations</label>
-                    <TagInput
-                      placeholder="e.g. Remote, Bangalore, Mumbai"
-                      value={locInput}
-                      onChange={setLocInput}
-                      onAdd={() => { addTag('preferred_locations', locInput); setLocInput('') }}
-                      tags={form.preferred_locations}
-                      onRemove={(i) => removeTag('preferred_locations', i)}
-                      color="violet"
-                    />
-                  </div>
+                  <SearchableMultiSelect
+                    value={form.preferred_roles}
+                    onChange={(roles) => setForm((f) => ({ ...f, preferred_roles: roles }))}
+                    placeholder="Search and select roles..."
+                    label="Preferred Roles"
+                    popularItems={POPULAR_ROLES}
+                    allItems={ALL_ROLES}
+                    isItemInList={isRoleInMasterList}
+                    allowCustom={true}
+                    maxItems={10}
+                    color="cyan"
+                  />
+                  <SearchableMultiSelect
+                    value={form.preferred_locations}
+                    onChange={(locations) => setForm((f) => ({ ...f, preferred_locations: locations }))}
+                    placeholder="Search and select locations..."
+                    label="Preferred Locations"
+                    popularItems={POPULAR_LOCATIONS}
+                    allItems={ALL_LOCATIONS}
+                    isItemInList={isLocationInMasterList}
+                    allowCustom={true}
+                    maxItems={10}
+                    color="violet"
+                  />
                 </div>
               </StepPanel>
             )}
 
             {step === 3 && (
-              <StepPanel key="resume" title="Upload Resume" subtitle="PDF format, max 10MB — optional but recommended" icon={Upload}>
+              <StepPanel key="resume" title="Upload Resume" subtitle="PDF format, max 10MB — required" icon={Upload}>
                 <label className="relative block cursor-pointer">
                   <input
                     type="file"
                     accept=".pdf"
                     className="hidden"
                     onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+                    disabled={loading || uploadingResume}
                   />
                   <div className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
                     resumeFile ? 'border-indigo-500/50 bg-indigo-500/5' : 'border-white/10 hover:border-white/20'
-                  }`}>
-                    {resumeFile ? (
+                  } ${loading || uploadingResume ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {uploadingResume ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <p className="text-white/60 text-sm">Uploading and analyzing resume...</p>
+                      </div>
+                    ) : resumeFile ? (
                       <div className="flex items-center justify-center gap-3">
                         <CheckCircle2 className="w-6 h-6 text-emerald-400" />
                         <div>
@@ -197,6 +279,7 @@ export default function Onboarding() {
                           type="button"
                           onClick={(e) => { e.preventDefault(); setResumeFile(null) }}
                           className="ml-2 text-white/30 hover:text-white/60"
+                          disabled={loading}
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -310,67 +393,6 @@ function Field({
         placeholder={placeholder}
         className="w-full glass rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 border border-white/10 focus:border-indigo-500/50 focus:outline-none transition-colors"
       />
-    </div>
-  )
-}
-
-function TagInput({
-  placeholder,
-  value,
-  onChange,
-  onAdd,
-  tags,
-  onRemove,
-  color,
-}: {
-  placeholder: string
-  value: string
-  onChange: (v: string) => void
-  onAdd: () => void
-  tags: string[]
-  onRemove: (i: number) => void
-  color: 'indigo' | 'cyan' | 'violet'
-}) {
-  const colorMap = {
-    indigo: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/20',
-    cyan: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/20',
-    violet: 'bg-violet-500/20 text-violet-300 border-violet-500/20',
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAdd() } }}
-          placeholder={placeholder}
-          className="flex-1 glass rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 border border-white/10 focus:border-indigo-500/50 focus:outline-none transition-colors"
-        />
-        <button
-          type="button"
-          onClick={onAdd}
-          className="px-3 py-2 rounded-xl glass border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
-      </div>
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag, i) => (
-            <span
-              key={i}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs border ${colorMap[color]}`}
-            >
-              {tag}
-              <button onClick={() => onRemove(i)} className="opacity-60 hover:opacity-100">
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

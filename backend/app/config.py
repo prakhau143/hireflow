@@ -1,10 +1,16 @@
 from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
+import os
+
+# Load .env explicitly
+load_dotenv()
 
 
 class Settings(BaseSettings):
     APP_NAME: str = "HireFlow AI"
     DEBUG: bool = True
     SECRET_KEY: str = "changeme-use-a-long-random-secret-in-production"
+    ENCRYPTION_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
@@ -25,7 +31,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://*.vercel.app",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
     ]
 
     class Config:
@@ -34,3 +41,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Debug print to verify loading
+if not settings.GROQ_API_KEY:
+    print("⚠ WARNING: GROQ_API_KEY is empty! Check .env file.")
+else:
+    print(f"✓ GROQ_API_KEY loaded successfully (length: {len(settings.GROQ_API_KEY)})")

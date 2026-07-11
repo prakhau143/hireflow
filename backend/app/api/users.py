@@ -7,13 +7,13 @@ from app.database import get_db
 from app.models.user import User
 from app.utils.auth import get_current_user
 from app.models.activity_log import ActivityLog
+from app.models.resume import Resume
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 class OnboardingRequest(BaseModel):
-    name: str
     phone: Optional[str] = None
     linkedin_url: Optional[str] = None
     github_url: Optional[str] = None
@@ -24,6 +24,21 @@ class OnboardingRequest(BaseModel):
     skills: list[str] = []
     preferred_roles: list[str] = []
     preferred_locations: list[str] = []
+    resume_id: Optional[str] = None
+
+
+class CompleteOnboardingRequest(BaseModel):
+    phone: str
+    current_role: str
+    current_location: str
+    linkedin_url: str
+    github_url: str
+    portfolio_url: str
+    years_experience: int
+    skills: list[str]
+    preferred_roles: list[str]
+    preferred_locations: list[str]
+    resume_id: str
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -59,12 +74,9 @@ class UserOut(BaseModel):
     preferred_roles: list
     preferred_locations: list
     onboarding_complete: bool
-    created_at: str
+    created_at: datetime
 
     model_config = {"from_attributes": True}
-
-    def model_post_init(self, __context):
-        self.created_at = str(self.created_at) if self.created_at else ""
 
 
 @router.get("/me", response_model=UserOut)
@@ -91,6 +103,57 @@ async def complete_onboarding(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.post("/onboarding/complete")
+async def complete_onboarding_transaction(
+    body: CompleteOnboardingRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    # Verify resume belongs to user
+    resume_result = await db.execute(
+        select(Resume).where(Resume.id == body.resume_id, Resume.user_id == user.id)
+    )
+    resume = resume_result.scalar_one_or_none()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    try:
+        # Update user profile
+        user.phone = body.phone
+        user.linkedin_url = body.linkedin_url
+        user.github_url = body.github_url
+        user.portfolio_url = body.portfolio_url
+        user.years_experience = body.years_experience
+        user.current_role = body.current_role
+        user.current_location = body.current_location
+        user.skills = body.skills
+        user.preferred_roles = body.preferred_roles
+        user.preferred_locations = body.preferred_locations
+        user.onboarding_complete = True
+
+        # Log activity
+        log = ActivityLog(
+            user_id=user.id,
+            action="Profile Completed",
+            description=f"Onboarding completed for {body.current_role}",
+        )
+        db.add(log)
+
+        # Commit transaction
+        await db.commit()
+        await db.refresh(user)
+
+        return {
+            "success": True,
+            "redirect": "/dashboard",
+            "profile_completion": 100,
+            "user": user,
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to complete onboarding: {str(e)}")
 
 
 @router.patch("/profile", response_model=UserOut)

@@ -5,6 +5,14 @@ from contextlib import asynccontextmanager
 import os
 from app.config import settings
 from app.database import create_tables
+# Import all models to ensure they're registered with Base.metadata
+from app.models.user import User
+from app.models.job import Job
+from app.models.resume import Resume
+from app.models.smtp import SmtpConfig
+from app.models.smtp_log import SmtpLog
+from app.models.template import EmailTemplate
+from app.models.activity_log import ActivityLog
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.jobs import router as jobs_router
@@ -19,6 +27,12 @@ from app.api.logs import router as logs_router
 async def lifespan(app: FastAPI):
     os.makedirs("uploads/resumes", exist_ok=True)
     await create_tables()
+    # Print masked Groq API key for debugging
+    if settings.GROQ_API_KEY:
+        masked_key = "*" * (len(settings.GROQ_API_KEY) - 4) + settings.GROQ_API_KEY[-4:]
+        print(f"✓ Groq API Key loaded: {masked_key}")
+    else:
+        print("⚠ Groq API Key not found in environment")
     yield
 
 
@@ -31,7 +45,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],  # Temporarily allow all for debugging
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
