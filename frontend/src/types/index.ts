@@ -7,6 +7,9 @@ export interface User {
   theme: 'dark' | 'light'
   created_at: string
   onboarding_complete: boolean
+  is_active?: boolean
+  permissions?: string[] | null
+  last_login?: string | null
   skills?: string[]
   years_experience?: number
   current_role?: string
@@ -17,6 +20,46 @@ export interface User {
   portfolio_url?: string
   preferred_roles?: string[]
   preferred_locations?: string[]
+  headline?: string | null
+  current_company?: string | null
+  expected_salary?: string | null
+  notice_period?: string | null
+  employment_type_pref?: string | null
+  remote_preference?: string | null
+  timezone?: string | null
+  leetcode_url?: string | null
+  hackerrank_url?: string | null
+  medium_url?: string | null
+  skill_proficiency?: Record<string, { level: number; years?: number }> | null
+  experience_timeline?: ExperienceEntry[] | null
+  projects?: ProjectEntry[] | null
+  certifications?: CertificationEntry[] | null
+  dream_companies?: string[] | null
+  preferred_domains?: string[] | null
+  target_salary?: string | null
+}
+
+export interface ExperienceEntry {
+  title: string
+  company: string
+  start: string
+  end: string
+  current?: boolean
+  description?: string
+}
+
+export interface ProjectEntry {
+  name: string
+  description?: string
+  tech?: string[]
+  github?: string
+  demo?: string
+}
+
+export interface CertificationEntry {
+  name: string
+  issuer?: string
+  year?: number | string
 }
 
 export interface Job {
@@ -35,6 +78,7 @@ export interface Job {
   posted_date: string
   source: string
   source_url?: string
+  apply_link?: string
   match_score?: number
   matched_skills?: string[]
   missing_skills?: string[]
@@ -43,6 +87,16 @@ export interface Job {
   smart_tags: string[]
   is_duplicate: boolean
   freshness_score: number
+  salary?: string
+  employment_type?: string
+  confidence_score?: number
+  hiring_manager?: string
+  application_type?: 'email' | 'google_form' | 'linkedin' | 'portal' | 'phone' | 'none'
+  is_recommended?: boolean
+  experience_badge?: string
+  match_tier?: string
+  match_breakdown?: { key: string; label: string; score: number; max: number; available: boolean }[]
+  score_suggestions?: { skill: string; projected: number; gain: number }[]
   status: 'new' | 'applied' | 'archived' | 'shortlisted'
   archive_reason?: 'low_match' | 'missing_experience' | 'missing_skills' | 'expired'
   created_at: string

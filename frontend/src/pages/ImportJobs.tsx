@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
+import ImportProgress, { IMPORT_LS_KEY } from '@/components/import/ImportProgress'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ interface ParsedJob {
   matched_skills: string[]
   missing_skills: string[]
   confidence_score: number
+  review_status: 'valid' | 'needs_review' | 'rejected'
   is_valid: boolean
   validation_reason: string | null
   _source: string
@@ -37,10 +39,15 @@ interface ParsedJob {
 }
 
 interface ParseStats {
+  source: string
+  raw_lines: number
+  noise_removed: number
   blocks_found: number
+  validated: number
+  needs_review: number
+  rejected: number
   valid: number
   invalid: number
-  source: string
 }
 
 interface SaveResult {
@@ -162,9 +169,27 @@ export default function ImportJobs() {
     },
   })
 
+  // Background import: survives refresh via localStorage, polls every 2s
+  const [bgSessionId, setBgSessionId] = useState<string | null>(() => localStorage.getItem(IMPORT_LS_KEY))
+  const bgStartMutation = useMutation({
+    mutationFn: async (rawText: string) => (await api.post('/api/imports/start', { text: rawText })).data,
+    onSuccess: (res) => {
+      localStorage.setItem(IMPORT_LS_KEY, res.import_id)
+      setBgSessionId(res.import_id)
+      setText('')
+      toast.success('Import started in background — feel free to navigate away')
+    },
+    onError: (err: any) => toast.error(err.response?.data?.detail || 'Failed to start import'),
+  })
+
   function handleAnalyze() {
     if (!text.trim()) { toast.error('Paste some job posts first'); return }
     parseMutation.mutate(text.trim())
+  }
+
+  function handleBackgroundImport() {
+    if (!text.trim()) { toast.error('Paste some job posts first'); return }
+    bgStartMutation.mutate(text.trim())
   }
 
   function handleSave() {
@@ -189,6 +214,11 @@ export default function ImportJobs() {
 
   return (
     <div className="w-full space-y-6">
+      {/* Live background import card (persists across refresh/navigation) */}
+      {bgSessionId && (
+        <ImportProgress sessionId={bgSessionId} onDone={() => setBgSessionId(null)} />
+      )}
+
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Import Jobs</h1>
@@ -260,9 +290,19 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                   whileTap={{ scale: 0.97 }}
                   onClick={handleAnalyze}
                   disabled={!text.trim()}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl glass border border-indigo-500/30 text-indigo-300 text-sm font-medium hover:bg-indigo-500/10 transition-colors disabled:opacity-60"
+                >
+                  <Sparkles className="w-4 h-4" /> Quick Parse
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleBackgroundImport}
+                  disabled={!text.trim() || bgStartMutation.isPending || !!bgSessionId}
+                  title={bgSessionId ? 'An import is already running' : 'Runs in background — you can navigate away'}
                   className="flex items-center gap-2 px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-60"
                 >
-                  <Sparkles className="w-4 h-4" /> Run Pipeline
+                  <Zap className="w-4 h-4" />
+                  {bgStartMutation.isPending ? 'Starting…' : 'Background Import'}
                 </motion.button>
               </div>
             </div>
@@ -336,24 +376,35 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
 
             {/* Parse summary bar */}
             {stats && (
-              <div className="glass rounded-xl border border-white/10 px-5 py-3 flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1.5">
+              <div className="glass rounded-xl border border-white/10 p-4 space-y-3">
+                {/* Source + select controls */}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 text-sm">
                     <SourceIcon className="w-4 h-4 text-indigo-400" />
-                    <span className="text-white/60">{sourceLabel}</span>
+                    <span className="text-white/70 font-medium">{sourceLabel} Import</span>
+                    <span className="text-white/20">·</span>
+                    <span className="text-white/40 text-xs">Enterprise Validation Pipeline</span>
                   </div>
-                  <span className="text-white/20">·</span>
-                  <span className="text-white/60">{stats.blocks_found} blocks detected</span>
-                  <span className="text-white/20">·</span>
-                  <span className="text-emerald-400 font-medium">{stats.valid} valid</span>
-                  {stats.invalid > 0 && (
-                    <><span className="text-white/20">·</span>
-                    <span className="text-red-400">{stats.invalid} invalid</span></>
-                  )}
+                  <div className="flex gap-3 text-xs text-white/40">
+                    <button onClick={() => setSelected(new Set(parsed.map((_, i) => i)))} className="hover:text-white transition-colors">Select all</button>
+                    <button onClick={() => setSelected(new Set())} className="hover:text-white transition-colors">None</button>
+                  </div>
                 </div>
-                <div className="flex gap-3 text-xs text-white/40">
-                  <button onClick={() => setSelected(new Set(parsed.map((_, i) => i)))} className="hover:text-white transition-colors">Select all</button>
-                  <button onClick={() => setSelected(new Set())} className="hover:text-white transition-colors">None</button>
+                {/* Pipeline stats row */}
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                  {[
+                    { label: 'Raw Messages', value: stats.raw_lines, color: 'text-white/60', bg: 'bg-white/5' },
+                    { label: 'Noise Removed', value: stats.noise_removed, color: 'text-orange-400', bg: 'bg-orange-500/10' },
+                    { label: 'Job Blocks', value: stats.blocks_found, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+                    { label: 'Needs Review', value: stats.needs_review, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+                    { label: 'Rejected', value: stats.rejected, color: 'text-red-400', bg: 'bg-red-500/10' },
+                    { label: 'Valid', value: stats.valid, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                  ].map(({ label, value, color, bg }) => (
+                    <div key={label} className={cn('rounded-lg border border-white/8 px-3 py-2 text-center', bg)}>
+                      <p className={cn('text-lg font-bold leading-none', color)}>{value}</p>
+                      <p className="text-[10px] text-white/40 mt-1 leading-tight">{label}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -390,18 +441,31 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                 >
                   <span className="flex items-center gap-2">
                     <XCircle className="w-4 h-4" />
-                    {invalid.length} block{invalid.length !== 1 ? 's' : ''} skipped (no valid job found)
+                    {invalid.length} block{invalid.length !== 1 ? 's' : ''} rejected by validation rules
                   </span>
                   {showInvalid ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {showInvalid && (
                   <div className="border-t border-red-500/10 px-5 py-4 space-y-3">
-                    {invalid.map((block, i) => (
-                      <div key={i} className="text-xs space-y-1">
-                        <p className="text-red-400/80">{block.validation_reason || 'Not a job post'}</p>
-                        {block._raw && <p className="text-white/25 font-mono truncate">{block._raw.substring(0, 120)}…</p>}
-                      </div>
-                    ))}
+                    {invalid.map((block, i) => {
+                      const reason = block.validation_reason || 'Not a job post'
+                      const ruleMatch = reason.match(/^(Rule [A-E]):/i)
+                      const ruleTag = ruleMatch ? ruleMatch[1] : null
+                      const reasonText = ruleMatch ? reason.replace(/^Rule [A-E]:\s*/i, '') : reason
+                      return (
+                        <div key={i} className="text-xs space-y-1">
+                          <div className="flex items-center gap-2">
+                            {ruleTag && (
+                              <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/25 font-mono text-[10px]">
+                                {ruleTag}
+                              </span>
+                            )}
+                            <p className="text-red-400/80">{reasonText}</p>
+                          </div>
+                          {block._raw && <p className="text-white/25 font-mono truncate pl-0.5">{block._raw.substring(0, 120)}…</p>}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -453,6 +517,12 @@ function ParsedJobCard({ job, selected, onToggle }: { job: ParsedJob; selected: 
   const matchColor = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-yellow-400' : 'text-red-400'
   const matchBg = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
 
+  const conf = job.confidence_score ?? 0
+  const confColor = conf >= 80 ? 'text-emerald-400' : conf >= 65 ? 'text-yellow-400' : 'text-red-400'
+  const confBg = conf >= 80 ? 'bg-emerald-500/10 border-emerald-500/25' : conf >= 65 ? 'bg-yellow-500/10 border-yellow-500/25' : 'bg-red-500/10 border-red-500/25'
+
+  const isNeedsReview = job.review_status === 'needs_review'
+
   const sourceLabel = job._source === 'whatsapp' ? 'WhatsApp'
     : job._source === 'linkedin' ? 'LinkedIn'
     : job._source === 'telegram' ? 'Telegram'
@@ -475,6 +545,9 @@ function ParsedJobCard({ job, selected, onToggle }: { job: ParsedJob; selected: 
             {job.employment_type && (
               <span className="px-1.5 py-0.5 rounded text-xs bg-white/5 text-white/40 border border-white/10">{job.employment_type}</span>
             )}
+            {isNeedsReview && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/15 text-yellow-400 border border-yellow-500/25">Needs Review</span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 text-white/50 text-xs flex-wrap">
             <Building2 className="w-3 h-3 shrink-0" />
@@ -488,14 +561,20 @@ function ParsedJobCard({ job, selected, onToggle }: { job: ParsedJob; selected: 
         </div>
       </div>
 
-      {/* Match score bar */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-white/40">Resume match</span>
-          <span className={cn('font-bold', matchColor)}>{score}%</span>
+      {/* Match score + confidence row */}
+      <div className="space-y-2">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-white/40">Resume match</span>
+            <span className={cn('font-bold', matchColor)}>{score}%</span>
+          </div>
+          <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+            <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.5 }} className={cn('h-full rounded-full', matchBg)} />
+          </div>
         </div>
-        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-          <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.5 }} className={cn('h-full rounded-full', matchBg)} />
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-white/30">AI confidence</span>
+          <span className={cn('px-1.5 py-0.5 rounded border text-[10px] font-semibold', confColor, confBg)}>{conf}%</span>
         </div>
       </div>
 

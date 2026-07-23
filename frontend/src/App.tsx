@@ -7,6 +7,7 @@ import Dashboard from '@/pages/Dashboard'
 import Jobs from '@/pages/Jobs'
 import JobDetail from '@/pages/JobDetail'
 import ResumeManager from '@/pages/ResumeManager'
+import Profile from '@/pages/Profile'
 import Archives from '@/pages/Archives'
 import SmtpManager from '@/pages/SmtpManager'
 import Templates from '@/pages/Templates'
@@ -16,6 +17,9 @@ import Settings from '@/pages/Settings'
 import ImportJobs from '@/pages/ImportJobs'
 import Onboarding from '@/pages/Onboarding'
 import Login, { Register, ForgotPassword } from '@/pages/auth/Login'
+import AdminUsers from '@/pages/admin/AdminUsers'
+import ReviewPanel from '@/pages/admin/ReviewPanel'
+import AdminAnalyticsPage from '@/pages/admin/AdminAnalytics'
 import { useAppStore } from '@/store/useAppStore'
 
 const queryClient = new QueryClient({
@@ -73,7 +77,9 @@ export default function App() {
             {/* App routes (need completed onboarding) */}
             <Route element={<OnboardingGuard />}>
               <Route element={<AppLayout />}>
+                {/* User routes */}
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="/import" element={<ImportJobs />} />
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetail />} />
@@ -84,6 +90,18 @@ export default function App() {
                 <Route path="/logs" element={<ActivityLogs />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<Settings />} />
+
+                {/* Admin routes */}
+                <Route path="/admin" element={<Dashboard />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/review" element={<ReviewPanel />} />
+                <Route path="/admin/jobs" element={<Jobs />} />
+                <Route path="/admin/ai" element={<ImportJobs />} />
+                <Route path="/admin/templates" element={<Templates />} />
+                <Route path="/admin/smtp" element={<SmtpManager />} />
+                <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+                <Route path="/admin/logs" element={<ActivityLogs />} />
+                <Route path="/admin/settings" element={<Settings />} />
               </Route>
             </Route>
           </Route>

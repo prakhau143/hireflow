@@ -3,28 +3,43 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Briefcase, Archive, Mail, FileText,
   BarChart3, FileCode2, Activity, Settings, Users,
-  Import, Cpu, Database, ChevronLeft, Zap
+  Import, Cpu, Database, ChevronLeft, Zap, ShieldCheck
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { cn } from '@/lib/utils'
 
+// key = permission identifier stored per-user in the DB (users.permissions)
+export const NAV_PERMISSIONS = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'import', label: 'Import Jobs' },
+  { key: 'jobs', label: 'Jobs' },
+  { key: 'archives', label: 'Archives' },
+  { key: 'smtp', label: 'SMTP' },
+  { key: 'resume', label: 'Resume Manager' },
+  { key: 'analytics', label: 'Analytics' },
+  { key: 'templates', label: 'Templates' },
+  { key: 'logs', label: 'Activity Logs' },
+  { key: 'settings', label: 'Settings' },
+]
+
 const userNav = [
-  { icon: LayoutDashboard, label: 'Dashboard', to: '/' },
-  { icon: Import, label: 'Import Jobs', to: '/import' },
-  { icon: Briefcase, label: 'Jobs', to: '/jobs' },
-  { icon: Archive, label: 'Archives', to: '/archives' },
-  { icon: Mail, label: 'SMTP', to: '/smtp' },
-  { icon: FileText, label: 'Resume Manager', to: '/resume' },
-  { icon: BarChart3, label: 'Analytics', to: '/analytics' },
-  { icon: FileCode2, label: 'Templates', to: '/templates' },
-  { icon: Activity, label: 'Activity Logs', to: '/logs' },
-  { icon: Settings, label: 'Settings', to: '/settings' },
+  { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', to: '/' },
+  { key: 'import', icon: Import, label: 'Import Jobs', to: '/import' },
+  { key: 'jobs', icon: Briefcase, label: 'Jobs', to: '/jobs' },
+  { key: 'archives', icon: Archive, label: 'Archives', to: '/archives' },
+  { key: 'smtp', icon: Mail, label: 'SMTP', to: '/smtp' },
+  { key: 'resume', icon: FileText, label: 'Resume Manager', to: '/resume' },
+  { key: 'analytics', icon: BarChart3, label: 'Analytics', to: '/analytics' },
+  { key: 'templates', icon: FileCode2, label: 'Templates', to: '/templates' },
+  { key: 'logs', icon: Activity, label: 'Activity Logs', to: '/logs' },
+  { key: 'settings', icon: Settings, label: 'Settings', to: '/settings' },
 ]
 
 const adminNav = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/admin' },
   { icon: Users, label: 'Users', to: '/admin/users' },
   { icon: Import, label: 'Imported Jobs', to: '/admin/jobs' },
+  { icon: ShieldCheck, label: 'Review Queue', to: '/admin/review' },
   { icon: Cpu, label: 'AI Processing', to: '/admin/ai' },
   { icon: FileCode2, label: 'Templates', to: '/admin/templates' },
   { icon: Mail, label: 'SMTP Management', to: '/admin/smtp' },
@@ -35,7 +50,12 @@ const adminNav = [
 
 export default function Sidebar() {
   const { user, sidebarCollapsed, toggleSidebar } = useAppStore()
-  const nav = user?.role === 'admin' ? adminNav : userNav
+  // DB-driven access: non-admins with a permissions list only see those nav keys
+  const nav = user?.role === 'admin'
+    ? adminNav
+    : userNav.filter(item =>
+        !Array.isArray((user as any)?.permissions) || (user as any).permissions.includes(item.key)
+      )
 
   return (
     <motion.aside

@@ -13,6 +13,8 @@ from app.models.smtp import SmtpConfig
 from app.models.smtp_log import SmtpLog
 from app.models.template import EmailTemplate
 from app.models.activity_log import ActivityLog
+from app.models.application import Application
+from app.models.import_session import ImportSession
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.jobs import router as jobs_router
@@ -21,6 +23,10 @@ from app.api.smtp import router as smtp_router
 from app.api.resumes import router as resumes_router
 from app.api.templates import router as templates_router
 from app.api.logs import router as logs_router
+from app.api.dashboard import router as dashboard_router
+from app.api.applications import router as applications_router
+from app.api.imports import router as imports_router
+from app.api.review import router as review_router
 
 
 @asynccontextmanager
@@ -62,6 +68,10 @@ app.include_router(smtp_router, prefix="/api")
 app.include_router(resumes_router, prefix="/api")
 app.include_router(templates_router, prefix="/api")
 app.include_router(logs_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
+app.include_router(applications_router, prefix="/api")
+app.include_router(imports_router, prefix="/api")
+app.include_router(review_router, prefix="/api")
 
 
 @app.get("/api/health")

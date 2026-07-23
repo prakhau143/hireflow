@@ -56,6 +56,41 @@ _NOISE_LINE_PATTERNS = [
     # LinkedIn reaction noise
     r"^(Like|Comment|Repost|Send)$",
     r"^\d+\s+(connections?|followers?)\s*$",
+    # ── Placement-office / Google Groups email dumps ─────────────────────────
+    # Media & attachments
+    r"^.*(image\d*\.(png|jpe?g|gif|webp)|IMG[_\-]?\d+\.(png|jpe?g)|<Media omitted>|photo omitted|video omitted|document omitted|\(file attached\)).*$",
+    r"^\[?(image|photo|video|attachment|sticker|GIF)\]?$",
+    # Link-only junk lines (YouTube, Google Groups, unsubscribe, tracking)
+    r"^.*(youtube\.com|youtu\.be)\S*.*$",
+    r"^.*groups\.google\.com\S*.*$",
+    r"^.*(unsubscribe|to stop receiving|opt[ -]?out of these emails).*$",
+    r"^.*view (this )?discussion (on the web)?.*$",
+    r"^.*visit https?://groups\.google.*$",
+    r"^.*you received this message because.*$",
+    r"^.*received this (message|email).*$",
+    # Email footers / signatures
+    r"^(Thanks|Thank you|Thanks & Regards|Thanks and Regards|Regards|Warm Regards|Best Regards|Kind Regards|Best wishes|Sincerely|Cheers)[.,!\s]*$",
+    r"^(With\s+)?(warm|best|kind)?\s*regards[.,!\s]*$",
+    r"^--\s*$",
+    r"^Sent from (my )?(iPhone|Android|Outlook|Gmail|Yahoo).*$",
+    # Placement / training office footers
+    r"^.*(Training\s*(&|and)?\s*Placement\s*(Office|Cell|Department)?|Placement\s+(Office|Cell|Officer|Coordinator|Department)|T\s*&\s*P\s*(Cell|Office)|TPO)\s*.*$",
+    r"^(Department of .{1,60}|Office of .{1,60})$",
+    # Blessings / motivational filler
+    r"^.*(God bless( you| all)?|All the best|Good luck|Best of luck)[.!\s]*$",
+    r"^(Good\s+(morning|afternoon|evening|day)|Greetings)(\s+(everyone|all|students|dear students))?[.,!\s]*$",
+    r"^(Dear\s+(students?|all|everyone|candidates?))[.,!\s]*$",
+    r"^.*(work hard|success is|never give up|believe in yourself|dream big).*$",
+    # Forward / broadcast headers
+    r"^(-+\s*)?Forwarded message(\s*-+)?$",
+    r"^\*?(From|To|Cc|Subject|Date|Sent)\s*:.*@.*$",
+    r"^(FYI|Please circulate|Kindly share|Share (with|to) (your )?(friends|juniors|batchmates).*)$",
+    # Ads / promos / channel spam (Import Rules: reject list)
+    r"^.*(advertisement|sponsored|promo code|use code|limited time offer).*$",
+    r"^.*(join\s+(?:our\s+)?(?:telegram|whatsapp)\s+(?:channel|group|community)).*$",
+    r"^.*(subscribe\s+(?:to\s+)?(?:our|the)\s+(?:channel|newsletter)|click here to join|dm to join).*$",
+    r"^.*(enroll\s+now|limited\s+seats|certification\s+course|paid\s+(?:course|internship\s+program)|free\s+webinar|workshop\s+on).*$",
+    r"^(#\S+)(\s+#\S+)*$",   # hashtag-only lines
 ]
 
 _NOISE_RE = re.compile(
@@ -92,6 +127,16 @@ _BOUNDARY_RES = [re.compile(p, re.IGNORECASE) for p in [
     r"^\s*[Rr]ole\s*:\s*",
     r"^\s*[Pp]osition\s*:\s*",
     r"^\s*[Jj]ob\s+[Tt]itle\s*:\s*",
+    r"^\s*(?:🏢\s*)?[Cc]ompany\s*(?:[Nn]ame)?\s*:\s*\S",
+    r"^\s*[Oo]rganization\s*:\s*\S",
+    r"^\s*[Dd]esignation\s*:\s*\S",
+    r"\bopening[s]?\s+for\b",
+    r"\bwalk[\s\-]?in\s+(?:interview|drive)\b",
+    r"\b(?:off|on)[\s\-]?campus\s+(?:drive|recruitment|hiring)\b",
+    r"\brecruitment\s+drive\b",
+    r"\binternship\s+(?:opportunity|opening|alert)\b",
+    # Numbered job lists: "1) Google — SDE Intern", "2. Zomato hiring backend dev"
+    r"^\s*\d{1,2}[\).]\s+.{2,80}(hiring|developer|engineer|intern|analyst|designer|manager|executive|trainee|associate)",
 ]]
 
 # Job-specific email prefix → treat that line as a boundary too
@@ -131,42 +176,85 @@ def _clean_noise(text: str) -> str:
     return "\n".join(result).strip()
 
 
-def _is_boundary(line: str) -> bool:
-    stripped = line.strip()
+# Strong boundaries = unmistakable new-post headers → always start a new block.
+# Weak boundaries (labels like "Company:", "looking for...") only split when the
+# current block already looks like a complete job — otherwise "We're Hiring" +
+# "Company: X" + "Role: Y" lines of the SAME post would get torn apart.
+_STRONG_BOUNDARY_RES = [re.compile(p, re.IGNORECASE) for p in [
+    r"^\s*\d{1,2}[\).]\s+.{0,90}(hiring|opening|vacancy|developer|engineer|intern|analyst|designer|manager|executive|trainee|associate|position|role)",
+    r"\bwe'?re\s+hiring\b",
+    r"\bis\s+hiring\b",
+    r"\bare\s+hiring\b",
+    r"\bnow\s+hiring\b",
+    r"\b(?:urgent(?:ly)?|immediate)\s+hiring\b",
+    r"\bjob\s+alert\b",
+    r"\bwalk[\s\-]?in\s+(?:interview|drive)\b",
+    r"\b(?:off|on)[\s\-]?campus\s+(?:drive|recruitment|hiring)\b",
+    r"\brecruitment\s+drive\b",
+]]
+
+_CONTACT_SIGNAL_RE = re.compile(
+    r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}|https?://\S+",
+    re.IGNORECASE,
+)
+
+
+def _boundary_kind(stripped: str) -> str | None:
+    """Classify a line: 'strong' | 'weak' | None."""
     if not stripped:
-        return False
+        return None
+    # Explicit separator lines (---, ===, ***)
+    if re.match(r"^[-=*~_]{3,}\s*$", stripped):
+        return "strong"
+    for pat in _STRONG_BOUNDARY_RES:
+        if pat.search(stripped):
+            return "strong"
     for pat in _BOUNDARY_RES:
         if pat.search(stripped):
-            return True
-    # Short line with a job-specific email → likely new post header
-    # BUT exclude lines that are clearly contact-detail rows ("Contact: hr@...", "Apply: hr@...")
+            return "weak"
+    # Short line with a job-specific email → possible new post header
+    # (but not contact-detail rows like "Apply: hr@...")
     if _JOB_EMAIL_RE.search(stripped) and len(stripped) < 120 and not _CONTACT_LABEL_RE.match(stripped):
-        return True
-    # Explicit separator lines (---, ===, ***)
-    if re.match(r"^[-=*~]{3,}\s*$", stripped):
-        return True
-    return False
+        return "weak"
+    return None
 
 
 def _segment_blocks(text: str) -> list[str]:
-    """Split cleaned text into individual job blocks by boundary detection."""
+    """Split cleaned text into job blocks using two-tier boundary detection."""
     lines = text.splitlines()
     blocks: list[list[str]] = []
     current: list[str] = []
+    cur_words = 0
+    cur_has_contact = False
 
-    for line in lines:
-        if _is_boundary(line) and current:
-            chunk = "\n".join(current).strip()
-            if len(chunk) > 25:
-                blocks.append(chunk)
-            current = [line]
-        else:
-            current.append(line)
-
-    if current:
+    def _flush():
         chunk = "\n".join(current).strip()
         if len(chunk) > 25:
             blocks.append(chunk)
+
+    for line in lines:
+        stripped = line.strip()
+        kind = _boundary_kind(stripped)
+        split = False
+        if kind and current:
+            if kind == "strong":
+                split = cur_words >= 8            # don't split off a bare header
+            else:
+                # weak boundary: only if current block already looks complete
+                split = cur_words >= 40 or cur_has_contact
+        if split:
+            _flush()
+            current = [line]
+            cur_words = len(stripped.split())
+            cur_has_contact = bool(_CONTACT_SIGNAL_RE.search(stripped))
+        else:
+            current.append(line)
+            cur_words += len(stripped.split())
+            if stripped and _CONTACT_SIGNAL_RE.search(stripped):
+                cur_has_contact = True
+
+    if current:
+        _flush()
 
     # Fallback: no boundaries found → treat whole text as one block
     return blocks if blocks else ([text.strip()] if text.strip() else [])
@@ -205,113 +293,360 @@ def _parse_experience(exp: str | None) -> tuple[int, int]:
 
 async def _extract_job_ai(block: str, user_skills: list[str]) -> dict | None:
     skills_ctx = ", ".join(user_skills) if user_skills else "not provided"
-    prompt = f"""Extract structured job data from the job post below.
+    prompt = f"""You are an enterprise ATS extraction engine. Extract structured job data from the text below.
 
-Candidate skills (for match scoring): {skills_ctx}
+Candidate skills for match scoring: {skills_ctx}
 
 JOB TEXT:
 ---
 {block[:3000]}
 ---
 
-Return a JSON object with these exact fields (null for anything not found):
+Return ONLY a JSON object. Be aggressive about extracting contact info (email / phone / apply URL).
+Fields (use null if genuinely not present):
 {{
-  "role": "exact job title",
-  "company": "company name or null",
+  "role": "exact job title — e.g. 'Senior Python Developer'",
+  "company": "company/org name or null",
   "experience": "e.g. '2-4 years' | 'Fresher' | 'Internship' | null",
-  "location": "city or null",
+  "location": "city/state or null  (NOT 'Remote' — put that in work_mode)",
   "work_mode": "Remote | Hybrid | Onsite | null",
   "skills": ["skill1", "skill2"],
   "salary": "e.g. '8-12 LPA' or null",
-  "email": "recruiter email or null",
-  "phone": "recruiter phone or null",
-  "apply_link": "URL or null",
+  "email": "any recruiter/HR/apply email found in text, or null",
+  "phone": "any recruiter/HR phone number found in text, or null",
+  "apply_link": "application URL (careers page, Google Form, lnkd.in, forms.gle...) or null",
+  "recruiter": "recruiter/HR contact person name or null",
+  "notice_period": "e.g. 'Immediate' | '30 days' | null",
   "description": "1-2 sentence role summary",
-  "requirements": ["req1", "req2"],
+  "responsibilities": ["key responsibility"],
+  "requirements": ["key requirement"],
   "employment_type": "Full Time | Internship | Contract | Part Time | null",
-  "match_score": <0-100 integer based on candidate vs job skills>,
-  "matched_skills": ["matching skill"],
-  "missing_skills": ["important missing skill"],
-  "confidence_score": <0-100 extraction confidence>,
-  "is_valid": <true if this is a real job post, false otherwise>
-}}
+  "confidence_score": <0-100 int — your confidence this is a real, complete job post>,
+  "is_valid": <true if this is a real actionable job post, false if noise/incomplete>
+}}"""
 
-Return ONLY the JSON object."""
+    import asyncio
+    for attempt in range(3):
+        try:
+            resp = await _get_client().chat.completions.create(
+                model=settings.GROQ_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.05,
+                response_format={"type": "json_object"},
+                max_tokens=1000,
+            )
+            return json.loads(resp.choices[0].message.content)
+        except Exception as e:
+            name = type(e).__name__
+            # Per-minute rate limits recover fast — back off and retry
+            if "RateLimit" in name and attempt < 2 and "per day" not in str(e).lower() and "tpd" not in str(e).lower():
+                await asyncio.sleep(20 * (attempt + 1))
+                continue
+            print(f"  [AI] extraction error: {name}: {e}")
+            return None
+    return None
 
-    try:
-        resp = await _get_client().chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.05,
-            response_format={"type": "json_object"},
-            max_tokens=1000,
-        )
-        return json.loads(resp.choices[0].message.content)
-    except Exception as e:
-        print(f"  [AI] extraction error: {type(e).__name__}: {e}")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ENTERPRISE VALIDATION — Rules A–E
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ANY_EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
+_PHONE_RE     = re.compile(r"(?:\+?\d[\d\s\-().]{7,}\d)")
+_URL_RE       = re.compile(r"https?://\S+", re.IGNORECASE)
+
+_GENERIC_EMAIL_DOMAINS = {
+    "gmail", "yahoo", "outlook", "hotmail", "rediffmail", "rediff", "protonmail",
+    "icloud", "aol", "live", "msn", "zoho", "ymail", "googlemail",
+}
+
+
+def _company_from_email(email: str | None) -> str | None:
+    """Salvage a company name from a corporate email domain: hr@zomato.com → 'Zomato'."""
+    if not email or "@" not in email:
         return None
+    domain = email.split("@", 1)[1].lower()
+    name = domain.split(".")[0]
+    if name in _GENERIC_EMAIL_DOMAINS or len(name) < 3:
+        return None
+    return name.replace("-", " ").replace("_", " ").title()
+
+
+def _find_apply_url(raw_block: str) -> str | None:
+    """First non-noise URL in the block (noise cleaner already dropped youtube/groups lines)."""
+    for url in _URL_RE.findall(raw_block):
+        low = url.lower()
+        if any(bad in low for bad in ("youtube.com", "youtu.be", "groups.google", "unsubscribe", "chat.whatsapp.com")):
+            continue
+        return url.rstrip(".,;)|]")
+    return None
+
+
+def _rule_confidence(job: dict) -> int:
+    """
+    Compute a field-completeness confidence score (0–100) independently of the
+    AI's own confidence_score so we have a deterministic signal.
+    """
+    score = 0
+    if job.get("role"):                                   score += 25
+    if job.get("email") or job.get("phone"):              score += 20
+    if job.get("company"):                                score += 10
+    if job.get("location") or (job.get("work_mode") or "").lower() == "remote":
+                                                          score += 10
+    if job.get("skills"):                                 score += 15
+    if job.get("experience"):                             score += 10
+    if job.get("description"):                            score += 10
+    return score
+
+
+def _validate_enterprise(job: dict, raw_block: str) -> tuple[bool, str, str]:
+    """
+    Apply Rules A–E.
+    Returns (is_valid, status, reason).
+    status: 'valid' | 'needs_review' | 'rejected'
+    """
+    role   = (job.get("role") or "").strip()
+    email  = job.get("email") or ""
+    phone  = job.get("phone") or ""
+    loc    = (job.get("location") or "").strip()
+    mode   = (job.get("work_mode") or "").lower()
+    skills = job.get("skills") or []
+    exp    = job.get("experience")
+    comp   = job.get("company")
+    desc   = job.get("description")
+
+    # ── Rule D — minimum word count ──────────────────────────────────────────
+    word_count = len(raw_block.split())
+    if word_count < 12:
+        return False, "rejected", "Rule D: Too short (< 12 words)"
+
+    # ── Rule A — must have role AND company ──────────────────────────────────
+    if not role or role.lower() in ("null", "n/a", "unknown", "none", ""):
+        return False, "rejected", "Rule A: No job title found"
+    comp_str = (comp or "").strip()
+    if not comp_str or comp_str.lower() in ("null", "n/a", "unknown", "none", "not mentioned", "not specified"):
+        # try to salvage from a corporate email domain before rejecting
+        salvage = _company_from_email(email) or _company_from_email(
+            (_ANY_EMAIL_RE.findall(raw_block) or [None])[0]
+        )
+        if salvage:
+            job["company"] = comp = salvage
+        else:
+            return False, "rejected", "Rule A: No company identified"
+    has_location = bool(loc) or "remote" in mode
+
+    # ── Rule B — must have email OR apply URL (phone alone → needs review) ───
+    # Also scan the raw block in case the AI missed them
+    raw_emails = _ANY_EMAIL_RE.findall(raw_block)
+    raw_phones = _PHONE_RE.findall(raw_block)
+    raw_url    = _find_apply_url(raw_block)
+    if not email and raw_emails:
+        job["email"] = email = raw_emails[0]
+    if not job.get("apply_link") and raw_url:
+        job["apply_link"] = raw_url
+    has_apply = bool(email) or bool(job.get("apply_link"))
+    phone_only = not has_apply and (bool(phone) or bool(raw_phones))
+    job["application_type"] = _classify_application_type(job, raw_block)
+    if not has_apply and not phone_only:
+        return False, "rejected", "Rule B: No way to apply (email / apply URL / phone missing)"
+
+    # ── Rule C — at least 3 of 4 optional fields ─────────────────────────────
+    optional_filled = sum([
+        bool(skills),
+        bool(exp),
+        bool(comp),
+        bool(desc),
+    ])
+    if optional_filled < 2:
+        return False, "rejected", f"Rule C: Only {optional_filled}/4 detail fields found"
+
+    # ── Rule E — confidence threshold ────────────────────────────────────────
+    conf = _rule_confidence(job)
+    ai_conf = int(job.get("confidence_score") or 0)
+    # Blend: 60% our deterministic score + 40% AI signal
+    blended = int(conf * 0.6 + ai_conf * 0.4)
+    job["confidence_score"] = blended  # overwrite with blended score
+
+    if blended < 40:
+        return False, "rejected", f"Rule E: Confidence too low ({blended}%)"
+    if phone_only:
+        return True, "needs_review", "Phone contact only — verify before applying"
+    if blended < 65 or not has_location:
+        return True, "needs_review", f"Confidence {blended}% — needs review"
+
+    return True, "valid", None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN PIPELINE
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def parse_linkedin_posts(raw_text: str, user_skills: list[str]) -> list[dict]:
-    """
-    Hybrid Rule-Based + AI pipeline:
-      1. Detect source (WhatsApp / LinkedIn / Telegram / text)
-      2. Remove noise lines (Rule Engine)
-      3. Segment into job blocks (boundary detection)
-      4. Extract each block via AI (JSON conversion only)
-      5. Validate and tag results
+def _dedupe_key(job: dict) -> str:
+    """Fingerprint: title + company + location + email — not title alone."""
+    parts = [
+        (job.get("role") or "").lower().strip(),
+        (job.get("company") or "").lower().strip(),
+        (job.get("location") or "").lower().strip(),
+        (job.get("email") or "").lower().strip(),
+    ]
+    return re.sub(r"[^a-z0-9 @]", "", " | ".join(parts))
 
-    Returns all blocks (valid + invalid) so the API can surface stats.
+
+_GFORM_RE = re.compile(
+    r"forms\.gle|docs\.google\.com/forms|google\s+forms?|registration\s+form|fill\s+(?:the\s+|this\s+)?form",
+    re.IGNORECASE,
+)
+
+
+def _classify_application_type(job: dict, raw_block: str) -> str:
+    """email > google_form > linkedin > portal > phone > none (drives Apply All routing)."""
+    link = (job.get("apply_link") or "").lower()
+    if job.get("email"):
+        return "email"
+    if _GFORM_RE.search(link) or _GFORM_RE.search(raw_block):
+        return "google_form"
+    if "linkedin.com" in link:
+        return "linkedin"
+    if link:
+        return "portal"
+    if job.get("phone"):
+        return "phone"
+    return "none"
+
+
+def _normalize_job(job: dict, user, resume) -> None:
+    """Phases 6/8/9/10 + matching engine: taxonomies, canonical location, 100-pt score."""
+    from app.services.taxonomy import canonical_skills, canonical_location, role_family
+    from app.services.matching_service import compute_match
+
+    job["skills"] = canonical_skills(job.get("skills"))
+    if job.get("location"):
+        job["location"] = canonical_location(job["location"])
+        if job["location"] == "Remote":
+            job["location"], job["work_mode"] = "", "Remote"
+    job["role_family"] = role_family(job.get("role"))
+
+    exp_min, exp_max = _parse_experience(job.get("experience"))
+    job["experience_min"], job["experience_max"] = exp_min, exp_max
+
+    match = compute_match(job, user, resume)
+    job["match_score"]       = match["score"]
+    job["match_tier"]        = match["tier"]
+    job["is_recommended"]    = match["recommended"]
+    job["experience_badge"]  = match["experience_badge"]
+    job["match_breakdown"]   = match["breakdown"]
+    job["matched_skills"]    = match["matched_skills"]
+    job["missing_skills"]    = match["missing_skills"]
+    job["score_suggestions"] = match["suggestions"]
+
+
+async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[dict], dict]:
     """
+    Enterprise Hybrid Rule-Based + AI pipeline.
+
+    Paste Text → Noise Cleaner → Block Splitter → AI Extraction → Validation
+    → Duplicate Checker → Skill/Role/Location Standardization → 100-pt Matching.
+
+    `user` is the User ORM object (skills, experience, locations, roles used for
+    matching); `resume` is the user's latest Resume row or None.
+    Returns (results, pipeline_stats).
+    """
+    from difflib import SequenceMatcher
+
     print(f"\n[Pipeline] Input: {len(raw_text)} chars")
 
-    source = _detect_source(raw_text)
-    print(f"[Pipeline] Source: {source}")
+    user_skills = list(user.skills or [])
+    raw_lines   = raw_text.splitlines()
+    total_lines = len(raw_lines)
 
+    source  = _detect_source(raw_text)
     cleaned = _clean_noise(raw_text)
-    print(f"[Pipeline] After noise removal: {len(cleaned)} chars")
+
+    cleaned_lines = cleaned.splitlines()
+    noise_removed = total_lines - sum(1 for l in cleaned_lines if l.strip())
 
     blocks = _segment_blocks(cleaned)
-    print(f"[Pipeline] Blocks segmented: {len(blocks)}")
+    print(f"[Pipeline] Source={source} | lines={total_lines} | noise≈{noise_removed} | blocks={len(blocks)}")
 
-    results: list[dict] = []
+    results:       list[dict] = []
+    validated_cnt  = 0
+    rejected_cnt   = 0
+    needs_review   = 0
+    duplicate_cnt  = 0
+    seen_keys:     list[tuple[str, str]] = []   # (dedupe_key, role label)
 
     for i, block in enumerate(blocks):
-        print(f"[Pipeline] Block {i + 1}/{len(blocks)} ({len(block)} chars)")
+        print(f"[Pipeline] Block {i + 1}/{len(blocks)} ({len(block.split())} words)")
         job = await _extract_job_ai(block, user_skills)
 
         if job is None:
             results.append({
                 "is_valid": False,
+                "review_status": "rejected",
                 "validation_reason": "AI extraction failed",
-                "role": None,
-                "_source": source,
-                "_raw": block[:300],
+                "role": None, "skills": [], "matched_skills": [],
+                "missing_skills": [], "match_score": 0,
+                "confidence_score": 0,
+                "_source": source, "_raw": block[:400],
             })
+            rejected_cnt += 1
             continue
 
-        role = (job.get("role") or "").strip()
-        if not role or role.lower() in ("null", "n/a", "unknown", ""):
-            job["is_valid"] = False
-            job["validation_reason"] = "No role found"
-        elif not job.get("is_valid", True):
-            job["is_valid"] = False
-            job["validation_reason"] = "Not a job post"
-        else:
-            job["is_valid"] = True
-            job["validation_reason"] = None
+        # Run enterprise validation (Rules A–E)
+        is_valid, status, reason = _validate_enterprise(job, block)
 
-        job["_source"] = source
-        job["_raw"] = block[:300]
+        # Rule F — fuzzy duplicate detection within this import (≥90% similar)
+        if is_valid:
+            key = _dedupe_key(job)
+            dup_of = None
+            for prev_key, prev_label in seen_keys:
+                if SequenceMatcher(None, key, prev_key).ratio() >= 0.9:
+                    dup_of = prev_label
+                    break
+            if dup_of:
+                is_valid, status = False, "rejected"
+                reason = f"Rule F: Duplicate of '{dup_of}'"
+                duplicate_cnt += 1
+            else:
+                seen_keys.append((key, f"{job.get('role')} @ {job.get('company')}"))
+
+        # Standardize + score every job that survived extraction
+        try:
+            _normalize_job(job, user, resume)
+        except Exception as e:
+            print(f"  [Pipeline] normalize/match error: {e}")
+
+        job["is_valid"]          = is_valid
+        job["review_status"]     = status
+        job["validation_reason"] = reason
+        job["_source"]           = source
+        job["_raw"]              = block[:400]
+
+        if is_valid:
+            if status == "needs_review":
+                needs_review += 1
+            else:
+                validated_cnt += 1
+        else:
+            rejected_cnt += 1
+
         results.append(job)
 
-    valid = sum(1 for j in results if j.get("is_valid"))
-    print(f"[Pipeline] Done — {valid}/{len(results)} valid")
-    return results
+    stats = {
+        "source":         source,
+        "raw_lines":      total_lines,
+        "noise_removed":  noise_removed,
+        "blocks_found":   len(blocks),
+        "validated":      validated_cnt,
+        "needs_review":   needs_review,
+        "rejected":       rejected_cnt,
+        "duplicates":     duplicate_cnt,
+        "valid":          validated_cnt + needs_review,
+        "invalid":        rejected_cnt,
+    }
+    print(f"[Pipeline] Done — validated={validated_cnt} needs_review={needs_review} "
+          f"rejected={rejected_cnt} (dups={duplicate_cnt})")
+    return results, stats
 
 
 async def analyze_resume(resume_text: str, user_skills: list[str]) -> dict:
@@ -343,6 +678,19 @@ Return a JSON object with these exact keys:
   "suggestions": [
     "Add quantifiable achievements (e.g., 'Reduced API response time by 40%')",
     "Include GitHub links to your projects"
+  ],
+  "section_scores": {{
+    "keyword_density": <0-100 — how well ATS keywords are represented>,
+    "experience_quality": <0-100 — depth/relevance of experience descriptions>,
+    "achievement_score": <0-100 — quantified, impact-focused achievements>,
+    "project_score": <0-100 — quality and relevance of projects>,
+    "certification_score": <0-100 — certifications present vs expected for this profile>,
+    "formatting": <0-100 — ATS-friendly structure and layout>,
+    "readability": <0-100 — how quickly a recruiter can scan it>
+  }},
+  "role_recommendations": [
+    {{"role": "Backend Developer", "match": <0-100>, "reason": "one sentence"}},
+    {{"role": "...", "match": <0-100>, "reason": "..."}}
   ]
 }}
 
@@ -350,7 +698,9 @@ Focus on:
 1. Technical skills that are in demand but missing
 2. Project suggestions that would fill skill gaps
 3. Keywords that ATS systems look for
-4. Sections that need improvement"""
+4. Sections that need improvement
+5. Honest section scores grounded in the actual resume text
+6. 3-4 realistic role recommendations based on the resume's strongest signals"""
 
     response = await _get_client().chat.completions.create(
         model=settings.GROQ_MODEL,

@@ -12,8 +12,10 @@ from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+from email.utils import formataddr, parseaddr
 import smtplib
 import ssl
+import re
 
 router = APIRouter(prefix="/smtp", tags=["smtp"])
 
@@ -24,6 +26,101 @@ PROVIDER_CONFIGS = {
     "yahoo": {"host": "smtp.mail.yahoo.com", "port": 587, "encryption": "TLS"},
     "zoho": {"host": "smtp.zoho.com", "port": 587, "encryption": "TLS"},
 }
+
+EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
+
+GMAIL_AUTH_GUIDE = (
+    "Gmail rejected the App Password. Fix steps:\n"
+    "1. Go to myaccount.google.com → Security\n"
+    "2. Enable 2-Step Verification (required for App Passwords)\n"
+    "3. Search 'App Passwords' → create one for 'Mail'\n"
+    "4. Copy the 16-character password Google shows\n"
+    "5. Paste that (without spaces) in the Password field here"
+)
+
+
+def _clean_str(v: str | None) -> str:
+    return (v or "").strip()
+
+
+def _clean_password(pw: str | None, provider: str | None) -> str:
+    """Strip hidden whitespace. Gmail App Passwords are shown with spaces — remove them all."""
+    pw = _clean_str(pw)
+    if (provider or "").lower() == "gmail":
+        pw = re.sub(r"\s+", "", pw)
+    return pw
+
+
+def _clean_email(value: str | None, fallback: str | None = None) -> str:
+    """Extract a bare, valid email from messy input like ' Name <a@b.com> '. Empty string if none."""
+    addr = parseaddr(_clean_str(value))[1].strip()
+    if EMAIL_RE.match(addr):
+        return addr
+    fb = parseaddr(_clean_str(fallback))[1].strip()
+    return fb if EMAIL_RE.match(fb) else ""
+
+
+def _open_smtp(host: str, port: int, encryption: str, username: str, password: str):
+    """Connect with the correct EHLO → STARTTLS → EHLO → LOGIN sequence, whitespace-safe."""
+    host = _clean_str(host)
+    username = _clean_str(username)
+    password = _clean_str(password)
+    context = ssl.create_default_context()
+    enc = (encryption or "").upper()
+
+    if enc == "SSL" or int(port) == 465:
+        server = smtplib.SMTP_SSL(host, port, context=context, timeout=15)
+        server.ehlo()
+    else:
+        server = smtplib.SMTP(host, port, timeout=15)
+        server.ehlo()
+        if enc == "TLS":
+            server.starttls(context=context)
+            server.ehlo()
+    server.login(username, password)
+    return server
+
+
+def _classify_smtp_error(e: Exception) -> dict:
+    """Map an SMTP exception to a stable error_code + actionable message."""
+    if isinstance(e, smtplib.SMTPAuthenticationError):
+        return {"error_code": "AUTH_FAILED", "message": GMAIL_AUTH_GUIDE}
+    if isinstance(e, smtplib.SMTPSenderRefused):
+        return {
+            "error_code": "ADDRESS_ERROR",
+            "message": (
+                f"The server rejected the sender address '{e.sender}'. "
+                "Make sure your sender email is a plain address like you@gmail.com — "
+                "no display name, brackets, or spaces."
+            ),
+        }
+    if isinstance(e, (smtplib.SMTPRecipientsRefused, smtplib.SMTPDataError)):
+        return {
+            "error_code": "ADDRESS_ERROR",
+            "message": "The server rejected the recipient address. Check it is a plain, valid email like someone@gmail.com.",
+        }
+
+    error_msg = str(e)
+    err_lower = error_msg.lower()
+    if "555" in error_msg or "5.5.2" in error_msg or "syntax" in err_lower:
+        return {
+            "error_code": "ADDRESS_ERROR",
+            "message": (
+                "Gmail couldn't parse the sender/recipient address (555 5.5.2 Syntax error). "
+                "This happens when the From/To email is empty or malformed. "
+                "Re-save your configuration — HireFlow now auto-repairs the sender address — then verify again."
+            ),
+        }
+    if "535" in error_msg or "534" in error_msg or "badcredentials" in err_lower \
+            or "username and password" in err_lower or "5.7.8" in error_msg \
+            or "authentication" in err_lower or "login" in err_lower:
+        return {"error_code": "AUTH_FAILED", "message": GMAIL_AUTH_GUIDE}
+    if "tls" in err_lower or "ssl" in err_lower:
+        return {"error_code": "TLS_ERROR", "message": "TLS/SSL error. Use port 587 with TLS, or port 465 with SSL."}
+    if "timeout" in err_lower or "connection" in err_lower or "refused" in err_lower \
+            or "getaddrinfo" in err_lower or "name or service" in err_lower:
+        return {"error_code": "CONNECT_FAILED", "message": "Connection failed. Check host and port settings."}
+    return {"error_code": "UNKNOWN", "message": f"Connection failed: {error_msg}"}
 
 
 class SmtpCreate(BaseModel):
@@ -94,17 +191,20 @@ async def create_smtp(body: SmtpCreate, db: AsyncSession = Depends(get_db), user
         body.port = config["port"]
         body.encryption = config["encryption"]
 
+    username = _clean_str(body.username)
+    from_email = _clean_email(body.from_email, fallback=username) or _clean_str(body.from_email) or username
+
     smtp = SmtpConfig(
         user_id=user.id,
         provider=body.provider,
-        host=body.host,
+        host=_clean_str(body.host),
         port=body.port,
         encryption=body.encryption,
-        username=body.username,
-        password_encrypted=encrypt_password(body.password),
-        from_name=body.from_name,
-        from_email=body.from_email,
-        reply_email=body.reply_email,
+        username=username,
+        password_encrypted=encrypt_password(_clean_password(body.password, body.provider)),
+        from_name=_clean_str(body.from_name),
+        from_email=from_email,
+        reply_email=_clean_str(body.reply_email) or None,
     )
     db.add(smtp)
     await db.commit()
@@ -140,21 +240,23 @@ async def update_smtp(smtp_id: str, body: SmtpUpdate, db: AsyncSession = Depends
         smtp.provider = body.provider
 
     if body.host is not None:
-        smtp.host = body.host
+        smtp.host = _clean_str(body.host)
     if body.port is not None:
         smtp.port = body.port
     if body.encryption is not None:
         smtp.encryption = body.encryption
     if body.username is not None:
-        smtp.username = body.username
-    if body.password is not None:
-        smtp.password_encrypted = encrypt_password(body.password)
+        smtp.username = _clean_str(body.username)
+    # Only overwrite password if a non-empty one was actually provided —
+    # a blank field means "keep the existing password"
+    if body.password is not None and body.password.strip():
+        smtp.password_encrypted = encrypt_password(_clean_password(body.password, body.provider or smtp.provider))
     if body.from_name is not None:
-        smtp.from_name = body.from_name
+        smtp.from_name = _clean_str(body.from_name)
     if body.from_email is not None:
-        smtp.from_email = body.from_email
+        smtp.from_email = _clean_email(body.from_email, fallback=smtp.username) or _clean_str(body.from_email) or smtp.username
     if body.reply_email is not None:
-        smtp.reply_email = body.reply_email
+        smtp.reply_email = _clean_str(body.reply_email) or None
 
     await db.commit()
     await db.refresh(smtp)
@@ -181,29 +283,36 @@ async def verify_smtp(smtp_id: str, db: AsyncSession = Depends(get_db), user: Us
     if not smtp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SMTP config not found")
 
+    # Resolve a guaranteed-valid sender address; auto-repair the stored one.
+    # An empty/malformed from_email is what caused Gmail's "555 5.5.2 Syntax error".
+    username = _clean_str(smtp.username)
+    from_email = _clean_email(smtp.from_email, fallback=username)
+    if not from_email:
+        smtp.test_status = "failed"
+        smtp.last_tested = datetime.now(timezone.utc)
+        smtp.last_error = "No valid sender email"
+        await db.commit()
+        return {
+            "status": "failed",
+            "error_code": "CONFIG_INVALID",
+            "message": "No valid sender email found. Set 'Google Email' to a plain address like you@gmail.com and save again.",
+        }
+    if smtp.from_email != from_email:
+        smtp.from_email = from_email  # heal older configs saved with empty/malformed from_email
+
     try:
         password = decrypt_password(smtp.password_encrypted)
-        
-        # Create SSL context
-        context = ssl.create_default_context()
-        
-        server = smtplib.SMTP(smtp.host, smtp.port, timeout=10)
-        
-        if smtp.encryption == "TLS":
-            server.starttls(context=context)
-        elif smtp.encryption == "SSL":
-            server = smtplib.SMTP_SSL(smtp.host, smtp.port, context=context, timeout=10)
-        
-        server.login(smtp.username, password)
-        
-        # Send a test email to verify
+        server = _open_smtp(smtp.host, smtp.port, smtp.encryption, username, password)
+
+        # Send a test email to verify — explicit envelope addresses, RFC-safe From header
         msg = MIMEText("This is a test email from HireFlow to verify your SMTP configuration.")
         msg["Subject"] = "HireFlow SMTP Verification"
-        msg["From"] = f"{smtp.from_name} <{smtp.from_email}>"
-        msg["To"] = smtp.from_email
-        server.send_message(msg)
+        from_name = _clean_str(smtp.from_name)
+        msg["From"] = formataddr((from_name, from_email)) if from_name else from_email
+        msg["To"] = from_email
+        server.sendmail(from_email, [from_email], msg.as_string())
         server.quit()
-        
+
         # Update status
         smtp.test_status = "success"
         smtp.last_tested = datetime.now(timezone.utc)
@@ -244,14 +353,7 @@ async def verify_smtp(smtp_id: str, db: AsyncSession = Depends(get_db), user: Us
         await db.commit()
         
         # Return specific error message
-        if "authentication" in error_msg.lower() or "login" in error_msg.lower():
-            return {"status": "failed", "message": "Authentication failed. Check your email and app password."}
-        elif "tls" in error_msg.lower() or "ssl" in error_msg.lower():
-            return {"status": "failed", "message": "TLS/SSL error. Check encryption settings."}
-        elif "timeout" in error_msg.lower() or "connection" in error_msg.lower():
-            return {"status": "failed", "message": "Connection timeout. Check host and port."}
-        else:
-            return {"status": "failed", "message": f"Connection failed: {error_msg}"}
+        return {"status": "failed", **_classify_smtp_error(e)}
 
 
 @router.post("/{smtp_id}/send-test")
@@ -262,32 +364,37 @@ async def send_test_email(smtp_id: str, body: TestEmailRequest, db: AsyncSession
     if not smtp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SMTP config not found")
 
+    to_email = _clean_email(body.to_email)
+    if not to_email:
+        raise HTTPException(status_code=400, detail="Invalid recipient email address")
+
+    username = _clean_str(smtp.username)
+    from_email = _clean_email(smtp.from_email, fallback=username)
+    if not from_email:
+        return {
+            "status": "failed",
+            "error_code": "CONFIG_INVALID",
+            "message": "No valid sender email in your configuration. Re-save it with a plain address like you@gmail.com.",
+        }
+
     try:
         password = decrypt_password(smtp.password_encrypted)
-        
-        context = ssl.create_default_context()
-        server = smtplib.SMTP(smtp.host, smtp.port, timeout=10)
-        
-        if smtp.encryption == "TLS":
-            server.starttls(context=context)
-        elif smtp.encryption == "SSL":
-            server = smtplib.SMTP_SSL(smtp.host, smtp.port, context=context, timeout=10)
-        
-        server.login(smtp.username, password)
-        
+        server = _open_smtp(smtp.host, smtp.port, smtp.encryption, username, password)
+
         msg = MIMEText("""
 This is a test email from HireFlow.
 
-Your SMTP configuration is working correctly! 
+Your SMTP configuration is working correctly!
 You can now send job application emails directly from the platform.
 
 Best regards,
 HireFlow Team
 """)
         msg["Subject"] = "HireFlow Test Email"
-        msg["From"] = f"{smtp.from_name} <{smtp.from_email}>"
-        msg["To"] = body.to_email
-        server.send_message(msg)
+        from_name = _clean_str(smtp.from_name)
+        msg["From"] = formataddr((from_name, from_email)) if from_name else from_email
+        msg["To"] = to_email
+        server.sendmail(from_email, [to_email], msg.as_string())
         server.quit()
         
         # Update analytics
@@ -306,12 +413,12 @@ HireFlow Team
         db.add(log)
         await db.commit()
         
-        return {"status": "success", "message": f"Test email sent to {body.to_email}"}
-        
+        return {"status": "success", "message": f"Test email sent to {to_email}"}
+
     except Exception as e:
         smtp.emails_failed += 1
         await db.commit()
-        
+
         log = SmtpLog(
             user_id=user.id,
             smtp_id=smtp.id,
@@ -321,8 +428,8 @@ HireFlow Team
         )
         db.add(log)
         await db.commit()
-        
-        return {"status": "failed", "message": str(e)}
+
+        return {"status": "failed", **_classify_smtp_error(e)}
 
 
 @router.get("/{smtp_id}/logs")

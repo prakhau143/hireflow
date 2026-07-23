@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, CheckCircle, XCircle, RefreshCw, Eye, EyeOff, Send, Settings, Server, Activity, Clock, AlertCircle, ExternalLink, Copy, Zap } from 'lucide-react'
+import { Mail, CheckCircle, XCircle, RefreshCw, Eye, EyeOff, Send, Settings, Server, Activity, Clock, AlertCircle, ExternalLink, Copy, Zap, ShieldAlert, ArrowRight } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -33,6 +33,7 @@ export default function SmtpManager() {
   const [showPreview, setShowPreview] = useState(false)
   const [showTestEmail, setShowTestEmail] = useState(false)
   const [testEmail, setTestEmail] = useState('')
+  const [verifyResult, setVerifyResult] = useState<{ status: string; error_code?: string; message?: string } | null>(null)
   const [form, setForm] = useState<SmtpForm>({
     provider: 'gmail',
     host: 'smtp.gmail.com',
@@ -83,7 +84,20 @@ export default function SmtpManager() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = { ...form, port: parseInt(form.port) }
+      const payload: Record<string, unknown> = {
+        ...form,
+        host: form.host.trim(),
+        username: form.username.trim(),
+        // Gmail shows app passwords with spaces — strip all whitespace
+        password: form.provider === 'gmail' ? form.password.replace(/\s+/g, '') : form.password.trim(),
+        from_name: form.from_name.trim(),
+        // No From Email input in the UI — sender defaults to the login email
+        from_email: (form.from_email || form.username).trim(),
+        reply_email: form.reply_email.trim(),
+        port: parseInt(form.port),
+      }
+      // Blank password on update means "keep the existing one" — don't overwrite it
+      if (!payload.password) delete payload.password
       if (primarySmtp?.id) {
         const { data } = await api.put(`/api/smtp/${primarySmtp.id}`, payload)
         return data
@@ -94,6 +108,7 @@ export default function SmtpManager() {
     },
     onSuccess: () => {
       toast.success('SMTP configuration saved successfully!')
+      setVerifyResult(null)
       qc.invalidateQueries({ queryKey: ['smtp'] })
     },
     onError: (err: any) => toast.error(err.response?.data?.detail || 'Failed to save configuration'),
@@ -106,9 +121,10 @@ export default function SmtpManager() {
       return data
     },
     onSuccess: (data) => {
+      setVerifyResult(data)
       if (data.status === 'success') {
-        toast.success('SMTP verified successfully! Test email sent.')
-      } else {
+        toast.success('SMTP verified! Test email sent to your inbox.')
+      } else if (data.error_code !== 'AUTH_FAILED') {
         toast.error(data.message || 'Verification failed')
       }
       qc.invalidateQueries({ queryKey: ['smtp'] })
@@ -300,6 +316,75 @@ export default function SmtpManager() {
                     {saveMutation.isPending ? 'Saving...' : 'Save Configuration'}
                   </motion.button>
                 </div>
+
+                {/* Verify result inline callout */}
+                <AnimatePresence>
+                  {verifyResult && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className={cn(
+                        'rounded-xl border p-4',
+                        verifyResult.status === 'success'
+                          ? 'bg-emerald-500/10 border-emerald-500/30'
+                          : 'bg-red-500/10 border-red-500/30'
+                      )}
+                    >
+                      {verifyResult.status === 'success' ? (
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+                          <p className="text-emerald-300 text-sm font-medium">SMTP verified successfully! Test email sent to your inbox.</p>
+                          <button onClick={() => setVerifyResult(null)} className="ml-auto text-white/30 hover:text-white/60 text-lg leading-none">×</button>
+                        </div>
+                      ) : verifyResult.error_code === 'AUTH_FAILED' ? (
+                        <div>
+                          <div className="flex items-start gap-3 mb-3">
+                            <ShieldAlert className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-red-300 text-sm font-semibold">Gmail App Password Rejected</p>
+                              <p className="text-red-400/70 text-xs mt-0.5">Gmail rejected your credentials. Follow these steps to fix it:</p>
+                            </div>
+                            <button onClick={() => setVerifyResult(null)} className="text-white/30 hover:text-white/60 text-lg leading-none shrink-0">×</button>
+                          </div>
+                          <ol className="space-y-2 ml-8">
+                            {[
+                              { step: 1, text: 'Go to', link: 'myaccount.google.com', href: 'https://myaccount.google.com/security', suffix: '→ Security' },
+                              { step: 2, text: 'Enable', bold: '2-Step Verification', suffix: '(required — App Passwords won\'t appear without it)' },
+                              { step: 3, text: 'Search for', bold: '"App Passwords"', suffix: 'in the Security page' },
+                              { step: 4, text: 'Create a new App Password for', bold: '"Mail"', suffix: 'and copy the 16-character code Google shows' },
+                              { step: 5, text: 'Paste that code', bold: 'without spaces', suffix: 'in the App Password field above, then save and re-verify' },
+                            ].map(({ step, text, link, href, bold, suffix }) => (
+                              <li key={step} className="flex items-start gap-2 text-xs text-white/60">
+                                <span className="shrink-0 w-5 h-5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-bold flex items-center justify-center mt-0.5">{step}</span>
+                                <span>
+                                  {text}{' '}
+                                  {link && <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{link}</a>}
+                                  {bold && <span className="text-white/80 font-medium"> {bold}</span>}
+                                  {suffix && <span className="text-white/40"> {suffix}</span>}
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
+                          <a
+                            href="https://myaccount.google.com/apppasswords"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 mt-4 ml-8 text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
+                          >
+                            Open Google App Passwords <ArrowRight className="w-3 h-3" />
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <XCircle className="w-5 h-5 text-red-400 shrink-0" />
+                          <p className="text-red-300 text-sm">{verifyResult.message}</p>
+                          <button onClick={() => setVerifyResult(null)} className="ml-auto text-white/30 hover:text-white/60 text-lg leading-none">×</button>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </motion.div>

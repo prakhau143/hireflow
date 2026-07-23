@@ -133,7 +133,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
 
     return TokenResponse(
-        access_token=create_token(user.id, user.role),
+        access_token=create_token(user.id, user.role, user.token_version),
         user_id=user.id,
         name=user.name,
         role=user.role,
@@ -146,9 +146,15 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
     if not user or not verify_password(body.password, user.hashed_password or ""):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended — contact the administrator")
+
+    from datetime import datetime, timezone
+    user.last_login = datetime.now(timezone.utc)
+    await db.commit()
 
     return TokenResponse(
-        access_token=create_token(user.id, user.role),
+        access_token=create_token(user.id, user.role, user.token_version),
         user_id=user.id,
         name=user.name,
         role=user.role,

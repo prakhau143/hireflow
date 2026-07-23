@@ -7,6 +7,7 @@ import { EmptyState, LoadingCards } from '@/components/ui/EmptyState'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
 import type { Resume } from '@/types'
+import ResumeIntelligence from '@/components/resume/ResumeIntelligence'
 
 function HealthWidget({ label, score, highlight = false }: { label: string; score: number; highlight?: boolean }) {
   const color = score >= 90 ? 'text-emerald-400' : score >= 75 ? 'text-yellow-400' : 'text-red-400'
@@ -484,6 +485,9 @@ export default function ResumeManager() {
           )}
         </div>
       )}
+
+      {/* Resume Intelligence V2: trends, heatmap, gaps, roles, compare */}
+      <ResumeIntelligence />
     </div>
   )
 }

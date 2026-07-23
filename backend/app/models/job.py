@@ -45,6 +45,23 @@ class Job(Base):
     confidence_score: Mapped[int] = mapped_column(Integer, default=0)
     apply_link: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
+    # email | google_form | linkedin | portal | phone | none — drives Apply All routing
+    application_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    # Review gate: background-imported jobs stay pending until an admin approves.
+    # NULL = legacy/manual rows (treated as approved).
+    review_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)  # pending_review|approved|rejected
+    import_session_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    duplicate_reason: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    validation_warnings: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)
+
+    # 100-point matching engine outputs
+    is_recommended: Mapped[bool] = mapped_column(Boolean, default=False)                # exp>75 & skills>65 & overall>80
+    experience_badge: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)  # Perfect Experience Match | ...
+    match_tier: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)        # Perfect Fit | Strong Fit | ...
+    match_breakdown: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)        # [{key,label,score,max,available}]
+    score_suggestions: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)      # [{skill,projected,gain}]
+
     status: Mapped[str] = mapped_column(String(20), default="new")  # new|applied|archived|shortlisted
     archive_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # low_match|missing_experience|missing_skills|expired
 

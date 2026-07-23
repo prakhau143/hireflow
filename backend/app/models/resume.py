@@ -26,6 +26,11 @@ class Resume(Base):
     skill_gaps: Mapped[List[str]] = mapped_column(JSON, default=list)
     suggestions: Mapped[List[str]] = mapped_column(JSON, default=list)
 
+    # Resume Intelligence V2
+    section_scores: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)       # keyword_density, experience_quality, ...
+    role_recommendations: Mapped[Optional[List]] = mapped_column(JSON, nullable=True) # [{role, match, reason}]
+    ats_history: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)          # [{date, score}] — every analysis appends
+
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc),

@@ -1,241 +1,313 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { FileCode2, Plus, Edit3, Trash2, Copy, Tag } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { FileCode2, Plus, Trash2, Star, Sparkles, Paperclip, X, Save } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
-import { EmptyState, LoadingCards } from '@/components/ui/EmptyState'
+import { LoadingCards } from '@/components/ui/EmptyState'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
-import type { EmailTemplate } from '@/types'
 
-const CATEGORIES = ['All', 'Python', 'Java', 'Backend', 'Frontend', 'Data Science', 'DevOps']
+interface Tpl {
+  id: string
+  name: string
+  category: string
+  subject: string
+  body: string
+  is_default?: boolean
+  ai_personalization?: boolean
+  attachments?: Record<string, boolean>
+  times_used?: number
+  success_count?: number
+}
 
-const categoryColors: Record<string, string> = {
-  Python: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  Java: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
-  Backend: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-  Frontend: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
-  'Data Science': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  DevOps: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+const CATEGORIES = [
+  'All', 'Resume Submission', 'Cold Outreach', 'Referral Request', 'Follow-up',
+  'Internship', 'Fresher', 'Experienced', 'Remote', 'Startup', 'MNC',
+  'Recruiter Reply', 'Thank You', 'Interview Follow-up', 'Negotiation', 'Networking',
+]
+
+const CAT_COLORS = [
+  'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
+  'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+  'text-purple-400 bg-purple-500/10 border-purple-500/20',
+  'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  'text-rose-400 bg-rose-500/10 border-rose-500/20',
+  'text-blue-400 bg-blue-500/10 border-blue-500/20',
+]
+const catColor = (c: string) => CAT_COLORS[Math.abs([...c].reduce((a, ch) => a + ch.charCodeAt(0), 0)) % CAT_COLORS.length]
+
+const VARIABLES = [
+  'name', 'email', 'phone', 'role', 'company', 'location', 'skills', 'matched_skills',
+  'missing_skills', 'experience', 'portfolio', 'github', 'linkedin', 'resume',
+  'current_role', 'today', 'job_summary', 'match_score', 'recruiter_name', 'career_goal',
+]
+
+const ATTACH_KEYS = ['resume', 'portfolio', 'github', 'linkedin', 'cover_letter'] as const
+
+function successRate(t: Tpl): number | null {
+  if (!t.times_used) return null
+  return Math.round(((t.success_count || 0) / t.times_used) * 100)
+}
+
+function stars(t: Tpl): number {
+  const rate = successRate(t)
+  if (rate == null) return 4
+  return Math.max(1, Math.min(5, Math.round(rate / 20)))
 }
 
 export default function Templates() {
   const qc = useQueryClient()
-  const [activeCategory, setActiveCategory] = useState('All')
-  const [creating, setCreating] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newSubject, setNewSubject] = useState('')
-  const [newBody, setNewBody] = useState('')
-  const [newCategory, setNewCategory] = useState('Backend')
+  const [category, setCategory] = useState('All')
+  const [editing, setEditing] = useState<Tpl | null>(null)
+  const [isNew, setIsNew] = useState(false)
 
-  const { data: templates, isLoading } = useQuery<EmailTemplate[]>({
+  const { data: templates = [], isLoading } = useQuery<Tpl[]>({
     queryKey: ['templates'],
-    queryFn: async () => {
-      const { data } = await api.get('/api/templates/')
-      return data
-    },
+    queryFn: async () => (await api.get('/api/templates/')).data,
   })
 
-  const createMutation = useMutation({
-    mutationFn: () => api.post('/api/templates/', {
-      name: newName,
-      subject: newSubject,
-      body: newBody,
-      category: newCategory,
-    }),
-    onSuccess: () => {
-      toast.success('Template created!')
-      qc.invalidateQueries({ queryKey: ['templates'] })
-      setCreating(false)
-      setNewName(''); setNewSubject(''); setNewBody('')
+  const saveMutation = useMutation({
+    mutationFn: async (t: Tpl) => {
+      const payload = {
+        name: t.name, category: t.category, subject: t.subject, body: t.body,
+        ai_personalization: t.ai_personalization ?? true, attachments: t.attachments ?? {},
+      }
+      if (isNew) return (await api.post('/api/templates/', payload)).data
+      return (await api.patch(`/api/templates/${t.id}`, payload)).data
     },
-    onError: () => toast.error('Failed to create template'),
+    onSuccess: () => {
+      toast.success(isNew ? 'Template created' : 'Template saved')
+      setEditing(null)
+      qc.invalidateQueries({ queryKey: ['templates'] })
+    },
+    onError: (e: any) => toast.error(e.response?.data?.detail || 'Save failed'),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/api/templates/${id}`),
+    mutationFn: async (id: string) => api.delete(`/api/templates/${id}`),
     onSuccess: () => {
       toast.success('Template deleted')
+      setEditing(null)
       qc.invalidateQueries({ queryKey: ['templates'] })
     },
   })
 
-  const copyMutation = useMutation({
-    mutationFn: async (template: EmailTemplate) =>
-      api.post('/api/templates/', {
-        name: `${template.name} (Copy)`,
-        subject: template.subject,
-        body: template.body,
-        category: template.category,
-      }),
-    onSuccess: () => {
-      toast.success('Template duplicated')
-      qc.invalidateQueries({ queryKey: ['templates'] })
-    },
-  })
+  const filtered = category === 'All' ? templates : templates.filter(t => t.category === category)
 
-  const filtered = (templates ?? []).filter(
-    (t) => activeCategory === 'All' || t.category === activeCategory
-  )
+  function openNew() {
+    setIsNew(true)
+    setEditing({
+      id: '', name: '', category: 'Resume Submission',
+      subject: 'Application for {{role}} at {{company}} — {{name}}',
+      body: 'Dear Hiring Team,\n\n\n',
+      ai_personalization: true,
+      attachments: { resume: true, portfolio: true, github: true, linkedin: true, cover_letter: false },
+    })
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="w-full space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Templates</h1>
-          <p className="text-white/40 text-sm mt-0.5">Email templates for different job categories</p>
+          <h1 className="text-2xl font-bold text-white">Email Template Library</h1>
+          <p className="text-white/40 text-sm mt-0.5">
+            AI-dynamic templates with {'{{variables}}'} — the Application Agent picks and personalizes them per job
+          </p>
         </div>
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-sm hover:bg-indigo-500/30 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          New Template
-        </motion.button>
+        <button onClick={openNew}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-sm hover:bg-indigo-500/30 transition-colors">
+          <Plus className="w-4 h-4" /> New Template
+        </button>
       </div>
 
-      {/* Category Pills */}
-      <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
+      {/* Category chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {CATEGORIES.map(c => (
+          <button key={c} onClick={() => setCategory(c)}
             className={cn(
-              'text-sm px-3 py-1.5 rounded-xl border transition-all',
-              activeCategory === cat
-                ? 'bg-indigo-500/25 border-indigo-500/40 text-indigo-300'
-                : 'glass border-white/10 text-white/50 hover:text-white/70 hover:border-white/20'
-            )}
-          >
-            {cat}
+              'px-3 py-1.5 rounded-full text-xs border transition-all',
+              category === c
+                ? 'bg-indigo-500/25 text-indigo-300 border-indigo-500/40'
+                : 'glass text-white/45 border-white/10 hover:text-white/80 hover:border-white/25'
+            )}>
+            {c}
           </button>
         ))}
       </div>
 
-      {/* New Template Form */}
-      {creating && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-2xl border border-indigo-500/30 p-5 space-y-3"
-        >
-          <h3 className="text-white font-medium text-sm">New Template</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              placeholder="Template name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="glass rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-indigo-500/40 outline-none col-span-1"
-            />
-            <select
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              className="glass rounded-xl px-3 py-2 text-sm text-white border border-white/10 focus:border-indigo-500/40 outline-none bg-transparent"
-            >
-              {CATEGORIES.filter((c) => c !== 'All').map((c) => (
-                <option key={c} value={c} style={{ background: '#0f1428' }}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <input
-            placeholder="Subject line (use {role}, {company}, {name})"
-            value={newSubject}
-            onChange={(e) => setNewSubject(e.target.value)}
-            className="w-full glass rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-indigo-500/40 outline-none"
-          />
-          <textarea
-            placeholder="Email body..."
-            value={newBody}
-            onChange={(e) => setNewBody(e.target.value)}
-            rows={4}
-            className="w-full glass rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-indigo-500/40 outline-none resize-none"
-          />
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => setCreating(false)} className="px-4 py-2 rounded-xl glass border border-white/10 text-sm text-white/60 hover:text-white transition-colors">
-              Cancel
-            </button>
-            <button
-              onClick={() => createMutation.mutate()}
-              disabled={createMutation.isPending || !newName || !newSubject || !newBody}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-60"
-            >
-              {createMutation.isPending ? 'Saving...' : 'Save Template'}
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Template Cards */}
+      {/* Template cards */}
       {isLoading ? (
-        <LoadingCards count={3} />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={FileCode2}
-          title="No templates yet"
-          description="Create email templates to quickly send applications. Use {role}, {company}, and {name} as placeholders."
-          action={
-            <button
-              onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm hover:bg-indigo-500 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Create First Template
-            </button>
-          }
-        />
+        <LoadingCards count={6} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((template, i) => (
-            <motion.div
-              key={template.id}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className="glass rounded-2xl border border-white/10 hover:border-white/20 transition-all p-5 space-y-3"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <FileCode2 className="w-4 h-4 text-indigo-400 shrink-0" />
-                  <h3 className="text-white font-medium text-sm truncate">{template.name}</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((t, i) => {
+            const rate = successRate(t)
+            return (
+              <motion.button
+                key={t.id}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                onClick={() => { setIsNew(false); setEditing({ ...t, attachments: { ...(t.attachments ?? {}) } }) }}
+                className="glass rounded-2xl border border-white/10 p-4 text-left hover:border-indigo-500/40 transition-all group"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="text-white font-semibold text-sm group-hover:text-indigo-300 transition-colors truncate">{t.name}</h3>
+                  <div className="flex shrink-0">
+                    {[...Array(5)].map((_, s) => (
+                      <Star key={s} className={cn('w-3 h-3', s < stars(t) ? 'text-yellow-400 fill-yellow-400' : 'text-white/15')} />
+                    ))}
+                  </div>
                 </div>
-                <span className={cn('text-xs px-2 py-0.5 rounded-full border shrink-0', categoryColors[template.category] ?? 'text-white/50 bg-white/5 border-white/10')}>
-                  <Tag className="w-3 h-3 inline mr-1" />
-                  {template.category}
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <p className="text-xs text-white/40">Subject:</p>
-                <p className="text-sm text-white/70">{template.subject}</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/3 border border-white/5">
-                <p className="text-xs text-white/40 line-clamp-3 leading-relaxed">{template.body}</p>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass border border-white/10 text-xs text-white/50 hover:text-white hover:border-white/20 transition-all">
-                  <Edit3 className="w-3.5 h-3.5" />
-                  Edit
-                </button>
-                <button
-                  onClick={() => copyMutation.mutate(template)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass border border-white/10 text-xs text-white/50 hover:text-white hover:border-white/20 transition-all"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Duplicate
-                </button>
-                <button
-                  onClick={() => deleteMutation.mutate(template.id)}
-                  className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass border border-white/10 text-xs text-white/30 hover:text-red-400 hover:border-red-500/20 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
+                <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                  <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', catColor(t.category))}>{t.category}</span>
+                  {t.is_default && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border bg-white/5 text-white/40 border-white/15">Default</span>
+                  )}
+                  {t.ai_personalization && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border bg-purple-500/10 text-purple-400 border-purple-500/25 flex items-center gap-1">
+                      <Sparkles className="w-2.5 h-2.5" /> AI
+                    </span>
+                  )}
+                </div>
+                <p className="text-white/35 text-xs line-clamp-2 mb-3 whitespace-pre-line">{t.body}</p>
+                <div className="flex items-center justify-between text-[11px] text-white/40 border-t border-white/5 pt-2">
+                  <span>Used <span className="text-white/70 font-medium">{t.times_used ?? 0}</span> times</span>
+                  <span>Success <span className={cn('font-medium', rate == null ? 'text-white/30' : rate >= 50 ? 'text-emerald-400' : 'text-yellow-400')}>
+                    {rate == null ? '—' : `${rate}%`}
+                  </span></span>
+                </div>
+              </motion.button>
+            )
+          })}
+          {filtered.length === 0 && (
+            <div className="col-span-full text-center py-16 text-white/25 text-sm">
+              <FileCode2 className="w-10 h-10 mx-auto mb-3 text-white/15" />
+              No templates in this category yet
+            </div>
+          )}
         </div>
       )}
+
+      {/* Template Editor */}
+      <AnimatePresence>
+        {editing && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)' }}
+            onClick={() => setEditing(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="glass rounded-2xl border border-white/15 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-white/10 bg-[#0d1424]/90 backdrop-blur-xl">
+                <h3 className="text-white font-semibold text-sm">{isNew ? 'New Template' : 'Edit Template'}</h3>
+                <button onClick={() => setEditing(null)} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-white/40 uppercase tracking-wider">Name</label>
+                    <input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })}
+                      className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/80 border border-white/10 focus:border-indigo-500/40 focus:outline-none" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-white/40 uppercase tracking-wider">Category</label>
+                    <select value={editing.category} onChange={e => setEditing({ ...editing, category: e.target.value })}
+                      className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/70 border border-white/10 focus:border-indigo-500/40 focus:outline-none">
+                      {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c} className="bg-[#0f1829]">{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-white/40 uppercase tracking-wider">Subject</label>
+                  <input value={editing.subject} onChange={e => setEditing({ ...editing, subject: e.target.value })}
+                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/80 border border-white/10 focus:border-indigo-500/40 focus:outline-none font-mono" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-white/40 uppercase tracking-wider">Body</label>
+                  <textarea value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} rows={9}
+                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/80 border border-white/10 focus:border-indigo-500/40 focus:outline-none font-mono leading-relaxed resize-y" />
+                </div>
+
+                {/* Variable palette */}
+                <div>
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Variables — click to insert</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {VARIABLES.map(v => (
+                      <button key={v}
+                        onClick={() => setEditing({ ...editing, body: editing.body + `{{${v}}}` })}
+                        className="text-[10px] px-2 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/20 transition-colors font-mono">
+                        {'{{'}{v}{'}}'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI toggle + attachments */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setEditing({ ...editing, ai_personalization: !editing.ai_personalization })}
+                    className={cn(
+                      'flex items-center justify-between px-4 py-3 rounded-xl border transition-all',
+                      editing.ai_personalization
+                        ? 'bg-purple-500/15 border-purple-500/30'
+                        : 'glass border-white/10'
+                    )}>
+                    <span className="flex items-center gap-2 text-sm text-white/80">
+                      <Sparkles className={cn('w-4 h-4', editing.ai_personalization ? 'text-purple-400' : 'text-white/30')} />
+                      AI Personalization
+                    </span>
+                    <span className={cn('text-xs font-bold', editing.ai_personalization ? 'text-purple-400' : 'text-white/30')}>
+                      {editing.ai_personalization ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+                  <div className="glass rounded-xl border border-white/10 px-4 py-3">
+                    <p className="text-xs text-white/40 mb-2 flex items-center gap-1.5"><Paperclip className="w-3 h-3" /> Attachment Rules</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                      {ATTACH_KEYS.map(k => (
+                        <label key={k} className="flex items-center gap-1.5 text-xs text-white/60 cursor-pointer">
+                          <input type="checkbox"
+                            checked={editing.attachments?.[k] ?? false}
+                            onChange={e => setEditing({ ...editing, attachments: { ...(editing.attachments ?? {}), [k]: e.target.checked } })}
+                            className="accent-indigo-500" />
+                          {k.replace('_', ' ')}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    onClick={() => saveMutation.mutate(editing)}
+                    disabled={saveMutation.isPending || !editing.name || !editing.subject}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-sm text-indigo-400 hover:bg-indigo-500/30 transition-all disabled:opacity-50">
+                    <Save className="w-4 h-4" /> {saveMutation.isPending ? 'Saving…' : 'Save Template'}
+                  </button>
+                  {!isNew && (
+                    <button
+                      onClick={() => deleteMutation.mutate(editing.id)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-500/25 text-sm text-red-400/80 hover:bg-red-500/10 transition-all">
+                      <Trash2 className="w-4 h-4" /> Delete
+                    </button>
+                  )}
+                  <p className="ml-auto text-[11px] text-white/25">AI only rewrites the body — subject & signature stay yours</p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
