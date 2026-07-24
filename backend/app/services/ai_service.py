@@ -53,8 +53,8 @@ _NOISE_LINE_PATTERNS = [
     r"^(CFBR|Commented For Better Reach)$",
     r"^\d+\s+(likes?|comments?|reposts?|reactions?)$",
     r"^(Suggested|Sponsored|Promoted|Advertisement)\s+post$",
-    # LinkedIn reaction noise
-    r"^(Like|Comment|Repost|Send)$",
+    # LinkedIn reaction noise / engagement bait
+    r"^(Like|Comment|Repost|Send|Share|Forward|React)[.,!\s❤️👍🔥]*$",
     r"^\d+\s+(connections?|followers?)\s*$",
     # ── Placement-office / Google Groups email dumps ─────────────────────────
     # Media & attachments
@@ -91,6 +91,9 @@ _NOISE_LINE_PATTERNS = [
     r"^.*(subscribe\s+(?:to\s+)?(?:our|the)\s+(?:channel|newsletter)|click here to join|dm to join).*$",
     r"^.*(enroll\s+now|limited\s+seats|certification\s+course|paid\s+(?:course|internship\s+program)|free\s+webinar|workshop\s+on).*$",
     r"^(#\S+)(\s+#\S+)*$",   # hashtag-only lines
+    # Pure decorative filler: emoji clusters, pointer rows, star/arrow banners —
+    # a line with zero letters and zero digits carries no job information.
+    r"^[^A-Za-z0-9]{1,120}$",
 ]
 
 _NOISE_RE = re.compile(
@@ -135,6 +138,12 @@ _BOUNDARY_RES = [re.compile(p, re.IGNORECASE) for p in [
     r"\b(?:off|on)[\s\-]?campus\s+(?:drive|recruitment|hiring)\b",
     r"\brecruitment\s+drive\b",
     r"\binternship\s+(?:opportunity|opening|alert)\b",
+    # Recruiter-writing-pattern intent words (Stage 2: Find Job Start)
+    r"\b(?:we\s+)?need(?:ed)?\s*[:\-]?\s*(?:a\s+|an\s+)?(?:\w+\s+){0,2}(?:developer|engineer|designer|manager|analyst|intern|fresher|executive|lead|architect|consultant|specialist|tester|qa)\b",
+    r"\bwanted\s*[:\-]?\s*(?:a\s+|an\s+)?(?:\w+\s+){0,2}(?:developer|engineer|designer|manager|analyst|intern|fresher|executive|lead|architect|consultant|specialist|tester|qa)\b",
+    r"^\s*[Oo]pening\s*[:\-]",
+    r"^\s*[Oo]pportunit(?:y|ies)\s*[:\-]",
+    r"^\s*[Vv]acanc(?:y|ies)\s*[:\-]",
     # Numbered job lists: "1) Google — SDE Intern", "2. Zomato hiring backend dev"
     r"^\s*\d{1,2}[\).]\s+.{2,80}(hiring|developer|engineer|intern|analyst|designer|manager|executive|trainee|associate)",
 ]]
@@ -348,7 +357,11 @@ Fields (use null if genuinely not present):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ENTERPRISE VALIDATION — Rules A–E
+# CONFIDENCE-SCORED VALIDATION
+# A missing field costs points — it never disqualifies a job by itself.
+# Only two things hard-reject: no role at all, or pure noise (too short).
+# Weights: Company 20 · Role 20 · Experience 15 · Location 10
+#          Apply/Contact 20 (email OR phone OR apply link) · Skills 10 · Salary 5
 # ─────────────────────────────────────────────────────────────────────────────
 
 _ANY_EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
@@ -359,6 +372,10 @@ _GENERIC_EMAIL_DOMAINS = {
     "gmail", "yahoo", "outlook", "hotmail", "rediffmail", "rediff", "protonmail",
     "icloud", "aol", "live", "msn", "zoho", "ymail", "googlemail",
 }
+_BLANK_VALUES = {"null", "n/a", "unknown", "none", "not mentioned", "not specified", ""}
+
+REJECT_FLOOR = 40    # below this → rejected regardless of which fields are missing
+VALID_CEILING = 90   # at/above this → valid; between floor and ceiling → needs_review
 
 
 def _company_from_email(email: str | None) -> str | None:
@@ -382,28 +399,14 @@ def _find_apply_url(raw_block: str) -> str | None:
     return None
 
 
-def _rule_confidence(job: dict) -> int:
-    """
-    Compute a field-completeness confidence score (0–100) independently of the
-    AI's own confidence_score so we have a deterministic signal.
-    """
-    score = 0
-    if job.get("role"):                                   score += 25
-    if job.get("email") or job.get("phone"):              score += 20
-    if job.get("company"):                                score += 10
-    if job.get("location") or (job.get("work_mode") or "").lower() == "remote":
-                                                          score += 10
-    if job.get("skills"):                                 score += 15
-    if job.get("experience"):                             score += 10
-    if job.get("description"):                            score += 10
-    return score
-
-
 def _validate_enterprise(job: dict, raw_block: str) -> tuple[bool, str, str]:
     """
-    Apply Rules A–E.
-    Returns (is_valid, status, reason).
-    status: 'valid' | 'needs_review' | 'rejected'
+    Returns (is_valid, status, reason). status: 'valid' | 'needs_review' | 'rejected'.
+
+    Missing company, missing email, missing salary — none of these reject a job
+    on their own; they just lower the confidence score. A recruiter who forgets
+    to name their company is still a real job post and belongs in Needs Review,
+    not the trash.
     """
     role   = (job.get("role") or "").strip()
     email  = job.get("email") or ""
@@ -412,69 +415,74 @@ def _validate_enterprise(job: dict, raw_block: str) -> tuple[bool, str, str]:
     mode   = (job.get("work_mode") or "").lower()
     skills = job.get("skills") or []
     exp    = job.get("experience")
-    comp   = job.get("company")
-    desc   = job.get("description")
+    comp   = (job.get("company") or "").strip()
+    salary = job.get("salary")
 
-    # ── Rule D — minimum word count ──────────────────────────────────────────
+    # ── Absolute floor #1 — pure noise / not enough text to be a real post ───
     word_count = len(raw_block.split())
     if word_count < 12:
-        return False, "rejected", "Rule D: Too short (< 12 words)"
+        return False, "rejected", "Too short to be a real job post (< 12 words)"
 
-    # ── Rule A — must have role AND company ──────────────────────────────────
-    if not role or role.lower() in ("null", "n/a", "unknown", "none", ""):
-        return False, "rejected", "Rule A: No job title found"
-    comp_str = (comp or "").strip()
-    if not comp_str or comp_str.lower() in ("null", "n/a", "unknown", "none", "not mentioned", "not specified"):
-        # try to salvage from a corporate email domain before rejecting
+    # ── Absolute floor #2 — no role means there's nothing to import ─────────
+    if not role or role.lower() in _BLANK_VALUES:
+        return False, "rejected", "No job title identified"
+
+    # Company: try direct extraction, then salvage from an email domain.
+    # A miss here only costs points below — it is never a reject reason.
+    if comp.lower() in _BLANK_VALUES:
         salvage = _company_from_email(email) or _company_from_email(
             (_ANY_EMAIL_RE.findall(raw_block) or [None])[0]
         )
-        if salvage:
-            job["company"] = comp = salvage
-        else:
-            return False, "rejected", "Rule A: No company identified"
-    has_location = bool(loc) or "remote" in mode
+        comp = salvage or ""
+        job["company"] = comp or None
 
-    # ── Rule B — must have email OR apply URL (phone alone → needs review) ───
-    # Also scan the raw block in case the AI missed them
+    # Scan the raw block for contact/apply info the AI might have missed
     raw_emails = _ANY_EMAIL_RE.findall(raw_block)
     raw_phones = _PHONE_RE.findall(raw_block)
     raw_url    = _find_apply_url(raw_block)
     if not email and raw_emails:
         job["email"] = email = raw_emails[0]
+    if not phone and raw_phones:
+        job["phone"] = phone = raw_phones[0]
     if not job.get("apply_link") and raw_url:
         job["apply_link"] = raw_url
-    has_apply = bool(email) or bool(job.get("apply_link"))
-    phone_only = not has_apply and (bool(phone) or bool(raw_phones))
+    apply_link = job.get("apply_link") or ""
+
     job["application_type"] = _classify_application_type(job, raw_block)
-    if not has_apply and not phone_only:
-        return False, "rejected", "Rule B: No way to apply (email / apply URL / phone missing)"
 
-    # ── Rule C — at least 3 of 4 optional fields ─────────────────────────────
-    optional_filled = sum([
-        bool(skills),
-        bool(exp),
-        bool(comp),
-        bool(desc),
-    ])
-    if optional_filled < 2:
-        return False, "rejected", f"Rule C: Only {optional_filled}/4 detail fields found"
+    has_location = bool(loc) or "remote" in mode
+    has_apply    = bool(email) or bool(apply_link) or bool(phone)
 
-    # ── Rule E — confidence threshold ────────────────────────────────────────
-    conf = _rule_confidence(job)
+    # ── Weighted confidence score (100 pts total) ────────────────────────────
+    score = 0
+    if comp:          score += 20
+    score += 20       # role — always true past the floor #2 check above
+    if exp:           score += 15
+    if has_location:  score += 10
+    if has_apply:     score += 20
+    if skills:        score += 10
+    if salary:        score += 5
+
     ai_conf = int(job.get("confidence_score") or 0)
-    # Blend: 60% our deterministic score + 40% AI signal
-    blended = int(conf * 0.6 + ai_conf * 0.4)
-    job["confidence_score"] = blended  # overwrite with blended score
+    blended = round(score * 0.75 + ai_conf * 0.25)   # deterministic score dominates
+    job["confidence_score"] = blended
 
-    if blended < 40:
-        return False, "rejected", f"Rule E: Confidence too low ({blended}%)"
-    if phone_only:
-        return True, "needs_review", "Phone contact only — verify before applying"
-    if blended < 65 or not has_location:
-        return True, "needs_review", f"Confidence {blended}% — needs review"
+    missing = []
+    if not comp:          missing.append("company")
+    if not exp:           missing.append("experience")
+    if not has_location:  missing.append("location")
+    if not has_apply:     missing.append("contact/apply method")
+    if not skills:        missing.append("skills")
+    if not salary:        missing.append("salary")
 
-    return True, "valid", None
+    if blended < REJECT_FLOOR:
+        return False, "rejected", f"Confidence too low ({blended}%) — missing: {', '.join(missing)}"
+
+    if blended >= VALID_CEILING:
+        return True, "valid", None
+
+    reason = f"Confidence {blended}%" + (f" — missing: {', '.join(missing)}" if missing else "")
+    return True, "needs_review", reason
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -592,10 +600,10 @@ async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[d
             rejected_cnt += 1
             continue
 
-        # Run enterprise validation (Rules A–E)
+        # Confidence-scored validation — missing fields cost points, they don't reject
         is_valid, status, reason = _validate_enterprise(job, block)
 
-        # Rule F — fuzzy duplicate detection within this import (≥90% similar)
+        # Fuzzy duplicate detection within this import (≥90% similar fingerprint)
         if is_valid:
             key = _dedupe_key(job)
             dup_of = None
@@ -605,7 +613,7 @@ async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[d
                     break
             if dup_of:
                 is_valid, status = False, "rejected"
-                reason = f"Rule F: Duplicate of '{dup_of}'"
+                reason = f"Duplicate of '{dup_of}' in this import"
                 duplicate_cnt += 1
             else:
                 seen_keys.append((key, f"{job.get('role')} @ {job.get('company')}"))
@@ -691,8 +699,36 @@ Return a JSON object with these exact keys:
   "role_recommendations": [
     {{"role": "Backend Developer", "match": <0-100>, "reason": "one sentence"}},
     {{"role": "...", "match": <0-100>, "reason": "..."}}
+  ],
+  "contact_info": {{"name": "full name or null", "phone": "phone or null", "email": "email or null", "location": "city/state or null"}},
+  "education": [
+    {{"college": "institution name", "degree": "e.g. B.Tech Computer Science", "cgpa": "e.g. 8.4 or 85% or null", "year": "passing year or null"}}
+  ],
+  "experience_entries": [
+    {{"company": "company name", "role": "job title", "start": "e.g. 'Feb 2025' — month+year if available",
+      "end": "e.g. 'Present' or 'Jun 2024'", "current": true or false,
+      "responsibilities": ["1-2 key responsibilities, terse"]}}
+  ],
+  "projects_extracted": [
+    {{"name": "project title", "description": "1 sentence", "tech": ["tech1", "tech2"], "github": "url or null", "live": "url or null"}}
+  ],
+  "certificates_extracted": [
+    {{"name": "e.g. AWS Certified Solutions Architect", "issuer": "e.g. AWS, Coursera, Udemy, or null"}}
+  ],
+  "skill_intelligence": [
+    {{"skill": "exact skill name as written", "category": "Programming | Framework | Cloud | AI/ML | Tool | Soft Skill",
+      "years": <estimated years used, integer or null>, "confidence": <0-100 int — how sure you are this skill genuinely appears>,
+      "last_used": "<estimated year this was last used, based on the most recent experience/project mentioning it, or null>"}}
   ]
 }}
+
+Classify EVERY skill you find into exactly one category:
+- Programming: Python, Java, JavaScript, C++, Go, etc. (languages)
+- Framework: React, Next.js, Node.js, Django, Spring Boot, etc.
+- Cloud: AWS, Azure, GCP, Firebase, etc.
+- AI/ML: LangChain, OpenAI, Claude, n8n, RAG, TensorFlow, PyTorch, etc.
+- Tool: Git, Docker, Linux, Postman, Figma, etc.
+- Soft Skill: Leadership, Communication, Teamwork, Problem Solving, etc.
 
 Focus on:
 1. Technical skills that are in demand but missing
@@ -700,14 +736,16 @@ Focus on:
 3. Keywords that ATS systems look for
 4. Sections that need improvement
 5. Honest section scores grounded in the actual resume text
-6. 3-4 realistic role recommendations based on the resume's strongest signals"""
+6. 3-4 realistic role recommendations based on the resume's strongest signals
+7. Extract education/experience/projects/certificates exactly as written — do not invent data not present in the resume
+8. For experience "start"/"end", extract the date text as-is (e.g. "Feb 2025", "2022") — duration is computed separately, do not calculate it yourself"""
 
     response = await _get_client().chat.completions.create(
         model=settings.GROQ_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
         response_format={"type": "json_object"},
-        max_tokens=2000,
+        max_tokens=3200,
     )
 
     return json.loads(response.choices[0].message.content)

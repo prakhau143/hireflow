@@ -27,6 +27,7 @@ from app.models.activity_log import ActivityLog
 from app.utils.auth import get_current_user
 from app.utils.encryption import decrypt_password
 from app.services import application_service as agent
+from app.services.system_email_service import send_system_email
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -264,6 +265,16 @@ async def _process_queue(user_id: str, smtp_id: str):
                 db.add(ActivityLog(user_id=user_id, action="Application Sent",
                                    description=f"Applied to {job_label} via AI email"))
                 await db.commit()
+
+                if job:
+                    notify_user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+                    if notify_user:
+                        try:
+                            await send_system_email(db, "application_sent", notify_user.email, {
+                                "name": notify_user.name, "job_title": job.title, "company": job.company,
+                            })
+                        except Exception as e:
+                            print(f"[Applications] application_sent notification failed: {e}")
             except Exception as e:
                 app_row.retries = (app_row.retries or 0) + 1
                 if app_row.retries >= 3:
@@ -277,5 +288,17 @@ async def _process_queue(user_id: str, smtp_id: str):
                     app_row.status = "queued"
                     app_row.scheduled_at = datetime.now(timezone.utc) + timedelta(seconds=60 * app_row.retries)
                 await db.commit()
+
+                if app_row.status == "failed":
+                    fail_job = (await db.execute(select(Job).where(Job.id == app_row.job_id))).scalar_one_or_none()
+                    notify_user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+                    if fail_job and notify_user:
+                        try:
+                            await send_system_email(db, "application_failed", notify_user.email, {
+                                "name": notify_user.name, "job_title": fail_job.title,
+                                "company": fail_job.company, "error": str(e)[:200],
+                            })
+                        except Exception as email_err:
+                            print(f"[Applications] application_failed notification failed: {email_err}")
 
         await asyncio.sleep(2)

@@ -214,10 +214,10 @@ export function ForgotPassword() {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post('/api/auth/forgot-password', { email })
+      const { data } = await api.post('/api/auth/forgot-password', { email })
       toast.success('OTP sent! Check your email.')
       setStep('otp')
-      setResendCountdown(60)
+      setResendCountdown(data?.resend_after_seconds ?? 60)
       setTimeout(() => otpRefs.current[0]?.focus(), 100)
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to send OTP')
@@ -292,13 +292,13 @@ export function ForgotPassword() {
     if (resendCountdown > 0) return
     setLoading(true)
     try {
-      await api.post('/api/auth/forgot-password', { email })
+      const { data } = await api.post('/api/auth/forgot-password', { email })
       setOtp(['', '', '', '', '', ''])
-      setResendCountdown(60)
+      setResendCountdown(data?.resend_after_seconds ?? 60)
       toast.success('New OTP sent!')
       setTimeout(() => otpRefs.current[0]?.focus(), 100)
     } catch (err: any) {
-      toast.error('Failed to resend OTP')
+      toast.error(err.response?.data?.detail || 'Failed to resend OTP')
     } finally {
       setLoading(false)
     }

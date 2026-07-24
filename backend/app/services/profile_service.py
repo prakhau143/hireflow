@@ -176,3 +176,67 @@ async def check_portfolio_health(user: User) -> dict:
 
     return {"checks": results, "github_activity": gh_activity,
             "checked_at": datetime.now(timezone.utc).isoformat()}
+
+
+# ---------------------------------------------------------------- AI career coach
+
+SUGGESTED_PROMPTS = [
+    "Which job should I apply to?",
+    "How do I improve my resume?",
+    "Improve my ATS score",
+    "What are my best matching jobs?",
+    "How should I negotiate salary?",
+]
+
+
+async def ask_career_coach(question: str, user, top_jobs: list, resume, applications_sent: int) -> dict:
+    """Grounded Q&A — every answer is anchored in the user's real data, not generic advice."""
+    from app.services.ai_service import _get_client
+    from app.config import settings
+
+    jobs_ctx = "\n".join(
+        f"- {j.title} at {j.company}: {round(j.match_score or 0)}% match"
+        + (f", tier={j.match_tier}" if j.match_tier else "")
+        + (f", missing: {', '.join(j.missing_skills[:3])}" if j.missing_skills else "")
+        for j in top_jobs[:5]
+    ) or "No jobs imported yet."
+
+    resume_ctx = "No resume uploaded yet."
+    if resume:
+        resume_ctx = (
+            f"ATS score: {resume.ats_score}. Weak sections: {', '.join(resume.weak_sections or []) or 'none'}. "
+            f"Skill gaps: {', '.join(g.get('skill', '') for g in (resume.skill_gaps or [])[:5] if isinstance(g, dict))}"
+        )
+
+    prompt = f"""You are an embedded AI Career Coach inside HireFlow, a job-hunting platform. Answer the
+candidate's question using ONLY the real data below — never invent job titles, companies, or numbers
+that aren't given. If the data doesn't cover the question, say so honestly and give general guidance instead.
+
+CANDIDATE: {user.years_experience or 0} yrs experience, current role: {user.current_role or 'not set'}
+Skills: {', '.join((user.skills or [])[:15]) or 'none listed'}
+Applications sent (last 30 days): {applications_sent}
+
+TOP MATCHING JOBS:
+{jobs_ctx}
+
+RESUME: {resume_ctx}
+
+QUESTION: "{question}"
+
+Respond in 3-5 sentences, conversational and specific — reference actual job titles/companies/scores from
+the data above when relevant. Return ONLY valid JSON:
+{{"answer": "your response", "suggested_action": "one short actionable next step, or null"}}"""
+
+    try:
+        client = _get_client()
+        response = await client.chat.completions.create(
+            model=settings.GROQ_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            response_format={"type": "json_object"},
+            max_tokens=500,
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        return {"answer": f"I couldn't reach the AI service right now ({type(e).__name__}). Try again shortly.",
+                "suggested_action": None}

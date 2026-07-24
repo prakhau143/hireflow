@@ -166,8 +166,8 @@ export default function AdminUsers() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">User Management</h1>
-          <p className="text-white/40 text-sm mt-0.5">Manage registered users, roles, and permissions</p>
+          <h1 className="text-2xl font-bold text-foreground">User Management</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Manage registered users, roles, and permissions</p>
         </div>
       </div>
 
@@ -184,12 +184,12 @@ export default function AdminUsers() {
           { label: 'AI Analyses', value: analytics?.totals.ai_usage ?? '—', icon: Layers, color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className={cn('glass rounded-xl border p-4 flex items-center gap-3', bg)}>
-            <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center bg-white/5 shrink-0')}>
+            <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center bg-foreground/5 shrink-0')}>
               <Icon className={cn('w-4 h-4', color)} />
             </div>
             <div className="min-w-0">
               <p className={cn('text-xl font-bold', color)}>{value}</p>
-              <p className="text-xs text-white/40 truncate">{label}</p>
+              <p className="text-xs text-muted-foreground truncate">{label}</p>
             </div>
           </div>
         ))}
@@ -230,7 +230,7 @@ export default function AdminUsers() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
               <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="value" name="Users" radius={[6, 6, 0, 0]}>
                 {(analytics?.experience_distribution ?? []).map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.85} />
@@ -255,7 +255,7 @@ export default function AdminUsers() {
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.9} />
                 ))}
               </Pie>
-              <Legend formatter={(v) => <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{v}</span>} />
+              <Legend formatter={(v) => <span style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>{v}</span>} />
               <Tooltip content={<ChartTooltip />} />
             </PieChart>
           </ResponsiveContainer>
@@ -271,7 +271,7 @@ export default function AdminUsers() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
               <XAxis type="number" tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="skill" tick={{ ...axisTick, fontSize: 10 }} axisLine={false} tickLine={false} width={76} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="count" name="Users" radius={[0, 6, 6, 0]}>
                 {(analytics?.top_skills ?? []).slice(0, 7).map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.85} />
@@ -291,7 +291,7 @@ export default function AdminUsers() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="range" tick={axisTick} axisLine={false} tickLine={false} />
               <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="count" name="Resumes" fill="#c084fc" fillOpacity={0.85} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -322,7 +322,7 @@ export default function AdminUsers() {
               </ResponsiveContainer>
               <p className="text-sm">
                 <span className="text-emerald-400 font-bold text-lg">{analytics.smtp_performance.rate}%</span>
-                <span className="text-white/40 ml-2 text-xs">success rate ({analytics.smtp_performance.success} ok / {analytics.smtp_performance.failed} failed)</span>
+                <span className="text-muted-foreground ml-2 text-xs">success rate ({analytics.smtp_performance.success} ok / {analytics.smtp_performance.failed} failed)</span>
               </p>
             </div>
           )}
@@ -335,42 +335,42 @@ export default function AdminUsers() {
           value={search}
           onChange={e => { setSearch(e.target.value); setOffset(0) }}
           placeholder="Search by name, email, or role…"
-          className="flex-1 min-w-[220px] glass rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-indigo-500/50 transition-colors"
+          className="flex-1 min-w-[220px] glass rounded-xl border border-border bg-transparent px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-indigo-500/50 transition-colors"
         />
         <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setOffset(0) }}
-          className="glass rounded-xl px-3 py-2.5 text-sm text-white/60 border border-white/10 focus:border-indigo-500/40 focus:outline-none">
-          <option value="" className="bg-[#0f1829]">All roles</option>
-          <option value="user" className="bg-[#0f1829]">User</option>
-          <option value="admin" className="bg-[#0f1829]">Admin</option>
+          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+          <option value="" className="bg-card">All roles</option>
+          <option value="user" className="bg-card">User</option>
+          <option value="admin" className="bg-card">Admin</option>
         </select>
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setOffset(0) }}
-          className="glass rounded-xl px-3 py-2.5 text-sm text-white/60 border border-white/10 focus:border-indigo-500/40 focus:outline-none">
-          <option value="" className="bg-[#0f1829]">All status</option>
-          <option value="active" className="bg-[#0f1829]">Active</option>
-          <option value="suspended" className="bg-[#0f1829]">Suspended</option>
+          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+          <option value="" className="bg-card">All status</option>
+          <option value="active" className="bg-card">Active</option>
+          <option value="suspended" className="bg-card">Suspended</option>
         </select>
         <select value={sort} onChange={e => { setSort(e.target.value); setOffset(0) }}
-          className="glass rounded-xl px-3 py-2.5 text-sm text-white/60 border border-white/10 focus:border-indigo-500/40 focus:outline-none">
-          <option value="created_at" className="bg-[#0f1829]">Newest first</option>
-          <option value="name" className="bg-[#0f1829]">Name</option>
-          <option value="last_login" className="bg-[#0f1829]">Last active</option>
-          <option value="jobs" className="bg-[#0f1829]">Most jobs</option>
-          <option value="applications" className="bg-[#0f1829]">Most applications</option>
-          <option value="ats" className="bg-[#0f1829]">Best ATS</option>
+          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+          <option value="created_at" className="bg-card">Newest first</option>
+          <option value="name" className="bg-card">Name</option>
+          <option value="last_login" className="bg-card">Last active</option>
+          <option value="jobs" className="bg-card">Most jobs</option>
+          <option value="applications" className="bg-card">Most applications</option>
+          <option value="ats" className="bg-card">Best ATS</option>
         </select>
       </div>
 
       {/* Users table */}
-      <div className="glass rounded-2xl border border-white/10 overflow-hidden">
-        <div className="hidden lg:grid grid-cols-[2.2fr_1fr_0.6fr_0.6fr_0.6fr_0.8fr_1fr_0.8fr_1.4fr] gap-3 px-5 py-3 text-[10px] text-white/30 uppercase tracking-wider">
+      <div className="glass rounded-2xl border border-border overflow-hidden">
+        <div className="hidden lg:grid grid-cols-[2.2fr_1fr_0.6fr_0.6fr_0.6fr_0.8fr_1fr_0.8fr_1.4fr] gap-3 px-5 py-3 text-[10px] text-muted-foreground uppercase tracking-wider">
           <span>User</span><span>Experience</span><span>Jobs</span><span>Apps</span>
           <span>ATS</span><span>SMTP</span><span>Last Active</span><span>Status</span><span>Actions</span>
         </div>
 
         {isLoading ? (
-          <div className="p-12 text-center text-white/30 text-sm">Loading users…</div>
+          <div className="p-12 text-center text-muted-foreground text-sm">Loading users…</div>
         ) : users.length === 0 ? (
-          <div className="p-12 text-center text-white/30 text-sm">No users match these filters</div>
+          <div className="p-12 text-center text-muted-foreground text-sm">No users match these filters</div>
         ) : (
           <div className="divide-y divide-white/5">
             {users.map((u, idx) => (
@@ -380,7 +380,7 @@ export default function AdminUsers() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.02 }}
                 className={cn(
-                  'grid grid-cols-2 lg:grid-cols-[2.2fr_1fr_0.6fr_0.6fr_0.6fr_0.8fr_1fr_0.8fr_1.4fr] gap-3 px-5 py-3.5 items-center hover:bg-white/[0.02] transition-colors',
+                  'grid grid-cols-2 lg:grid-cols-[2.2fr_1fr_0.6fr_0.6fr_0.6fr_0.8fr_1fr_0.8fr_1.4fr] gap-3 px-5 py-3.5 items-center hover:bg-foreground/[0.02] transition-colors',
                   !u.is_active && 'opacity-50'
                 )}
               >
@@ -395,17 +395,17 @@ export default function AdminUsers() {
                       {u.name}
                       {u.role === 'admin' && <Shield className="w-3 h-3 text-yellow-400 shrink-0" />}
                     </p>
-                    <p className="text-xs text-white/35 truncate">{u.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                   </div>
                 </button>
-                <span className="text-xs text-white/55 truncate">
+                <span className="text-xs text-muted-foreground truncate">
                   {u.years_experience != null ? `${u.years_experience} yrs` : '—'}
                   {u.current_role ? ` · ${u.current_role}` : ''}
                 </span>
-                <span className="text-sm text-white/60 tabular-nums">{u.job_count}</span>
-                <span className="text-sm text-white/60 tabular-nums">{u.application_count}</span>
+                <span className="text-sm text-muted-foreground tabular-nums">{u.job_count}</span>
+                <span className="text-sm text-muted-foreground tabular-nums">{u.application_count}</span>
                 <span className={cn('text-sm font-semibold tabular-nums',
-                  u.best_ats == null ? 'text-white/20' : u.best_ats >= 80 ? 'text-emerald-400' : u.best_ats >= 60 ? 'text-yellow-400' : 'text-red-400')}>
+                  u.best_ats == null ? 'text-muted-foreground/60' : u.best_ats >= 80 ? 'text-emerald-400' : u.best_ats >= 60 ? 'text-yellow-400' : 'text-red-400')}>
                   {u.best_ats ?? '—'}
                 </span>
                 <span>
@@ -413,9 +413,9 @@ export default function AdminUsers() {
                     ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Verified</span>
                     : u.smtp_status === 'failed'
                     ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">Failed</span>
-                    : <span className="text-[10px] text-white/20">—</span>}
+                    : <span className="text-[10px] text-muted-foreground/60">—</span>}
                 </span>
-                <span className="text-xs text-white/40">
+                <span className="text-xs text-muted-foreground">
                   {u.last_active ? new Date(u.last_active).toLocaleDateString() : u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}
                 </span>
                 <span>
@@ -430,12 +430,12 @@ export default function AdminUsers() {
                       onChange={e => roleMutation.mutate({ userId: u.id, role: e.target.value })}
                       className={cn(
                         'appearance-none pl-2 pr-5 py-1 rounded-lg text-[10px] border cursor-pointer outline-none bg-transparent',
-                        u.role === 'admin' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' : 'text-white/60 border-white/15'
+                        u.role === 'admin' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' : 'text-muted-foreground border-white/15'
                       )}>
-                      <option value="user" className="bg-[#0f1829] text-white">User</option>
-                      <option value="admin" className="bg-[#0f1829] text-white">Admin</option>
+                      <option value="user" className="bg-card text-foreground">User</option>
+                      <option value="admin" className="bg-card text-foreground">Admin</option>
                     </select>
-                    <ChevronDown className="w-2.5 h-2.5 text-white/30 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-2.5 h-2.5 text-muted-foreground absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                   <button
                     title={u.is_active ? 'Suspend account' : 'Activate account'}
@@ -447,7 +447,7 @@ export default function AdminUsers() {
                     {u.is_active ? 'Suspend' : 'Activate'}
                   </button>
                   <button title="Reset password" onClick={() => resetMutation.mutate(u.id)}
-                    className="px-2 py-1 rounded-lg text-[10px] border border-white/10 text-white/40 hover:text-white/80 hover:border-white/25">
+                    className="px-2 py-1 rounded-lg text-[10px] border border-border text-muted-foreground hover:text-foreground/85 hover:border-accent/30">
                     Reset PW
                   </button>
                 </div>
@@ -457,13 +457,13 @@ export default function AdminUsers() {
         )}
 
         {total > PAGE && (
-          <div className="flex items-center justify-between px-5 py-2.5 border-t border-white/8 text-xs text-white/40">
+          <div className="flex items-center justify-between px-5 py-2.5 border-t border-border text-xs text-muted-foreground">
             <span>{total} users · page {page} of {pages}</span>
             <div className="flex gap-1.5">
               <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}
-                className="px-2.5 py-1 rounded-lg border border-white/10 hover:border-white/25 disabled:opacity-30">Prev</button>
+                className="px-2.5 py-1 rounded-lg border border-border hover:border-accent/30 disabled:opacity-30">Prev</button>
               <button disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)}
-                className="px-2.5 py-1 rounded-lg border border-white/10 hover:border-white/25 disabled:opacity-30">Next</button>
+                className="px-2.5 py-1 rounded-lg border border-border hover:border-accent/30 disabled:opacity-30">Next</button>
             </div>
           </div>
         )}
@@ -473,8 +473,8 @@ export default function AdminUsers() {
       {tempPass && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setTempPass(null)}>
           <div className="glass rounded-2xl border border-white/15 p-6 max-w-sm w-full text-center space-y-3" onClick={e => e.stopPropagation()}>
-            <h3 className="text-white font-semibold text-sm">Temporary Password</h3>
-            <p className="text-white/40 text-xs">For {tempPass.email} — shown only once. Share it securely; user should change it after login.</p>
+            <h3 className="text-foreground font-semibold text-sm">Temporary Password</h3>
+            <p className="text-muted-foreground text-xs">For {tempPass.email} — shown only once. Share it securely; user should change it after login.</p>
             <p className="font-mono text-lg text-indigo-300 bg-indigo-500/10 border border-indigo-500/25 rounded-xl py-2.5 select-all">{tempPass.password}</p>
             <button onClick={() => { navigator.clipboard.writeText(tempPass.password); toast.success('Copied') }}
               className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Copy & Close</button>
@@ -486,10 +486,10 @@ export default function AdminUsers() {
       {drawerId && (
         <div className="fixed inset-0 z-50 flex justify-end" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setDrawerId(null)}>
           <motion.div initial={{ x: 420 }} animate={{ x: 0 }} transition={{ type: 'tween', duration: 0.25 }}
-            className="w-full max-w-md h-full overflow-y-auto bg-[#0d1424] border-l border-white/10 p-5 space-y-5"
+            className="w-full max-w-md h-full overflow-y-auto bg-card border-l border-border p-5 space-y-5"
             onClick={e => e.stopPropagation()}>
             {!detail ? (
-              <div className="h-40 rounded-xl bg-white/5 shimmer" />
+              <div className="h-40 rounded-xl bg-foreground/5 shimmer" />
             ) : (
               <>
                 <div className="flex items-center gap-3">
@@ -497,23 +497,23 @@ export default function AdminUsers() {
                     {detail.user.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-white font-semibold truncate">{detail.user.name}</p>
-                    <p className="text-white/40 text-xs truncate">{detail.user.email}</p>
+                    <p className="text-foreground font-semibold truncate">{detail.user.name}</p>
+                    <p className="text-muted-foreground text-xs truncate">{detail.user.email}</p>
                   </div>
-                  <button onClick={() => setDrawerId(null)} className="text-white/40 hover:text-white text-xl leading-none">×</button>
+                  <button onClick={() => setDrawerId(null)} className="text-muted-foreground hover:text-white text-xl leading-none">×</button>
                 </div>
 
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[['Jobs', detail.user.job_count], ['Apps', detail.user.application_count],
                     ['Resumes', detail.user.resume_count], ['ATS', detail.user.best_ats ?? '—']].map(([l, v]) => (
-                    <div key={l as string} className="glass rounded-xl border border-white/10 py-2">
-                      <p className="text-white font-bold text-sm">{v as any}</p>
-                      <p className="text-white/35 text-[10px]">{l}</p>
+                    <div key={l as string} className="glass rounded-xl border border-border py-2">
+                      <p className="text-foreground font-bold text-sm">{v as any}</p>
+                      <p className="text-muted-foreground text-[10px]">{l}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-1 text-xs text-white/50">
+                <div className="space-y-1 text-xs text-muted-foreground">
                   {detail.profile.phone && <p>📞 {detail.profile.phone}</p>}
                   {detail.profile.github_url && <p className="truncate">GitHub: {detail.profile.github_url}</p>}
                   {detail.profile.linkedin_url && <p className="truncate">LinkedIn: {detail.profile.linkedin_url}</p>}
@@ -521,14 +521,14 @@ export default function AdminUsers() {
                 </div>
 
                 {/* Sidebar permissions matrix */}
-                <div className="glass rounded-xl border border-white/10 p-3.5">
-                  <p className="text-xs text-white/60 font-medium mb-2">Sidebar Access (DB-driven)</p>
+                <div className="glass rounded-xl border border-border p-3.5">
+                  <p className="text-xs text-muted-foreground font-medium mb-2">Sidebar Access (DB-driven)</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {PERMISSION_KEYS.map(([key, label]) => {
                       const current = permDraft ?? detail.user.permissions ?? PERMISSION_KEYS.map(([k]) => k)
                       const checked = current.includes(key)
                       return (
-                        <label key={key} className="flex items-center gap-1.5 text-xs text-white/60 cursor-pointer">
+                        <label key={key} className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                           <input type="checkbox" checked={checked} className="accent-indigo-500"
                             onChange={() => {
                               const next = checked ? current.filter(k => k !== key) : [...current, key]
@@ -546,7 +546,7 @@ export default function AdminUsers() {
                       Save Access
                     </button>
                     <button onClick={() => { permMutation.mutate({ userId: detail.user.id, permissions: null }); setPermDraft(null) }}
-                      className="py-1.5 px-3 rounded-lg border border-white/10 text-white/40 text-xs hover:text-white/70">
+                      className="py-1.5 px-3 rounded-lg border border-border text-muted-foreground text-xs hover:text-foreground/80">
                       Reset to all
                     </button>
                   </div>
@@ -554,10 +554,10 @@ export default function AdminUsers() {
 
                 {detail.resumes.length > 0 && (
                   <div>
-                    <p className="text-xs text-white/60 font-medium mb-2">Resumes</p>
+                    <p className="text-xs text-muted-foreground font-medium mb-2">Resumes</p>
                     {detail.resumes.map(r => (
-                      <div key={r.id} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5">
-                        <span className="text-white/60 truncate">{r.name}</span>
+                      <div key={r.id} className="flex items-center justify-between text-xs py-1.5 border-b border-border">
+                        <span className="text-muted-foreground truncate">{r.name}</span>
                         <span className="text-emerald-400 font-semibold ml-2">ATS {r.ats_score}</span>
                       </div>
                     ))}
@@ -566,11 +566,11 @@ export default function AdminUsers() {
 
                 {detail.applications.length > 0 && (
                   <div>
-                    <p className="text-xs text-white/60 font-medium mb-2">Recent Applications</p>
+                    <p className="text-xs text-muted-foreground font-medium mb-2">Recent Applications</p>
                     {detail.applications.map(a => (
-                      <div key={a.id} className="text-xs py-1.5 border-b border-white/5">
-                        <p className="text-white/60 truncate">{a.subject}</p>
-                        <p className="text-white/30">{a.to_email} · <span className={a.status === 'sent' ? 'text-emerald-400' : a.status === 'failed' ? 'text-red-400' : 'text-yellow-400'}>{a.status}</span></p>
+                      <div key={a.id} className="text-xs py-1.5 border-b border-border">
+                        <p className="text-muted-foreground truncate">{a.subject}</p>
+                        <p className="text-muted-foreground">{a.to_email} · <span className={a.status === 'sent' ? 'text-emerald-400' : a.status === 'failed' ? 'text-red-400' : 'text-yellow-400'}>{a.status}</span></p>
                       </div>
                     ))}
                   </div>
@@ -578,10 +578,10 @@ export default function AdminUsers() {
 
                 {detail.activity.length > 0 && (
                   <div>
-                    <p className="text-xs text-white/60 font-medium mb-2">Recent Activity</p>
+                    <p className="text-xs text-muted-foreground font-medium mb-2">Recent Activity</p>
                     {detail.activity.map((l, i) => (
-                      <p key={i} className="text-xs text-white/45 py-1 border-b border-white/5 truncate">
-                        {l.action} <span className="text-white/25">— {new Date(l.created_at).toLocaleString()}</span>
+                      <p key={i} className="text-xs text-muted-foreground py-1 border-b border-border truncate">
+                        {l.action} <span className="text-muted-foreground">— {new Date(l.created_at).toLocaleString()}</span>
                       </p>
                     ))}
                   </div>

@@ -7,20 +7,32 @@ from app.models.resume import Resume
 from app.models.activity_log import ActivityLog
 from app.utils.auth import get_current_user
 from app.services.ai_service import analyze_resume, generate_job_recommendations, analyze_resume_for_job
+from app.services.resume_intelligence_service import (
+    SECTION_KEYS, enrich_experience_entries, detect_links,
+    normalize_skill_intelligence, resume_health_reason, profile_gap_suggestions,
+)
 from datetime import datetime, timezone
 import io
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
-SECTION_KEYS = [
-    ("keyword_density", "Keyword Density"),
-    ("experience_quality", "Experience Quality"),
-    ("achievement_score", "Achievements"),
-    ("project_score", "Projects"),
-    ("certification_score", "Certifications"),
-    ("formatting", "Formatting"),
-    ("readability", "Readability"),
-]
+
+def _apply_deep_extraction(resume: Resume, ai_data: dict, raw_text: str) -> None:
+    """Populate the Resume Intelligence Engine fields from one AI analysis pass."""
+    entries, total_exp = enrich_experience_entries(ai_data.get("experience_entries"))
+    resume.experience_entries = entries
+    resume.total_experience_computed = total_exp
+    resume.education = ai_data.get("education") or []
+    resume.projects_extracted = ai_data.get("projects_extracted") or []
+    resume.certificates_extracted = ai_data.get("certificates_extracted") or []
+    resume.skill_intelligence = normalize_skill_intelligence(ai_data.get("skill_intelligence"))
+    resume.contact_info = ai_data.get("contact_info")
+
+    # Regex safety net — resumes almost always print these as literal URLs,
+    # which a plain-text scan catches more reliably than free-form AI extraction.
+    regex_github, regex_portfolio = detect_links(raw_text)
+    resume.github_detected = regex_github
+    resume.portfolio_detected = regex_portfolio
 
 
 @router.get("/intelligence")
@@ -41,6 +53,8 @@ async def resume_intelligence(db: AsyncSession = Depends(get_db), user: User = D
             "strong_skills": r.strong_skills or [],
             "created_at": r.created_at, "updated_at": r.updated_at,
             "has_sections": bool(r.section_scores),
+            "health_reason": resume_health_reason(r.section_scores),
+            "total_experience_computed": r.total_experience_computed,
         })
 
     best = max(resumes, key=lambda r: r.ats_score or 0) if resumes else None
@@ -150,6 +164,27 @@ async def list_resumes(db: AsyncSession = Depends(get_db), user: User = Depends(
     return result.scalars().all()
 
 
+@router.get("/{resume_id}/profile-gap")
+async def get_profile_gap(
+    resume_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Resume vs. Profile diff — skills/links/projects/certs the resume has that
+    the profile is missing, as one-click suggestions the frontend can apply via
+    the existing PATCH /users/profile endpoint."""
+    resume = (await db.execute(
+        select(Resume).where(Resume.id == resume_id, Resume.user_id == user.id)
+    )).scalar_one_or_none()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return {
+        "suggestions": profile_gap_suggestions(user, resume),
+        "health_reason": resume_health_reason(resume.section_scores),
+        "total_experience_computed": resume.total_experience_computed,
+    }
+
+
 @router.post("/upload")
 async def upload_resume(
     file: UploadFile = File(...),
@@ -212,6 +247,8 @@ async def upload_resume(
                 "score": ai_data.get("ats_score", 0),
             }] if ai_data else [],
         )
+        if ai_data:
+            _apply_deep_extraction(resume, ai_data, raw_text)
         db.add(resume)
 
         log = ActivityLog(
@@ -256,6 +293,7 @@ async def re_analyze_resume(
     resume.suggestions = ai_data.get("suggestions", [])
     resume.section_scores = ai_data.get("section_scores") or resume.section_scores
     resume.role_recommendations = ai_data.get("role_recommendations") or resume.role_recommendations
+    _apply_deep_extraction(resume, ai_data, resume.raw_text)
     # Improvement timeline: every analysis appends a point
     history = list(resume.ats_history or [])
     history.append({"date": datetime.now(timezone.utc).isoformat(), "score": resume.ats_score})

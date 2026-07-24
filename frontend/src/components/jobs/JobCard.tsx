@@ -68,7 +68,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
         'glass rounded-2xl border transition-all overflow-hidden group relative',
         isCompared
           ? 'border-indigo-500/50 ring-1 ring-indigo-500/25'
-          : 'border-white/10 hover:border-white/25 hover:shadow-lg hover:shadow-black/20'
+          : 'border-border hover:border-accent/30 hover:shadow-lg hover:shadow-black/20'
       )}
     >
       {/* Top color accent */}
@@ -89,7 +89,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
         className={cn(
           'absolute top-3 left-3 z-10 w-5 h-5 rounded border transition-all flex items-center justify-center',
           compareMode || isCompared ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-          isCompared ? 'bg-indigo-500 border-indigo-500' : 'bg-white/5 border-white/20 hover:border-white/40'
+          isCompared ? 'bg-indigo-500 border-indigo-500' : 'bg-foreground/5 border-border hover:border-foreground/30'
         )}
       >
         {isCompared && <CheckCircle className="w-3 h-3 text-white" />}
@@ -99,12 +99,12 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
         {/* Header: title + score ring */}
         <div className="flex items-start justify-between gap-2 pt-1">
           <div className="flex-1 min-w-0">
-            <h3 className="text-white font-semibold text-sm leading-tight truncate group-hover:text-indigo-300 transition-colors pr-1">
+            <h3 className="text-foreground font-semibold text-sm leading-tight truncate group-hover:text-indigo-300 transition-colors pr-1">
               {job.title}
             </h3>
             <div className="flex items-center gap-1.5 mt-1">
-              <Building2 className="w-3 h-3 text-white/30 shrink-0" />
-              <span className="text-white/50 text-xs truncate">{job.company}</span>
+              <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground text-xs truncate">{job.company}</span>
               {(job.confidence_score ?? 0) >= 70 && (
                 <span className="shrink-0 text-[9px] px-1 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20">
                   ✓ Verified
@@ -117,7 +117,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
           <div className="shrink-0">
             <div className="relative">
               <svg width="48" height="48" viewBox="0 0 48 48">
-                <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="3" />
+                <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" strokeWidth="3" />
                 <circle
                   cx="24" cy="24" r="20" fill="none"
                   stroke={ring} strokeWidth="3" strokeLinecap="round"
@@ -167,6 +167,24 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
                 : 'No Contact'}
             </span>
           )}
+        </div>
+
+        {/* Why this match — quick checklist from the engine's own breakdown */}
+        {(job.match_breakdown?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            {job.match_breakdown!.filter(b => b.available).slice(0, 4).map(b => {
+              const strong = b.score / b.max >= 0.7
+              return (
+                <span key={b.key} className={cn('flex items-center gap-1 text-[10px]', strong ? 'text-emerald-400/80' : 'text-muted-foreground/60')}>
+                  {strong ? <CheckCircle className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
+                  {b.label}
+                </span>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 flex-wrap">
           {(job.score_suggestions?.length ?? 0) > 0 && (
             <span
               className="text-[9px] text-purple-400/80"
@@ -178,7 +196,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
         </div>
 
         {/* Meta row */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/40">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           {job.location && (
             <span className="flex items-center gap-1">
               <MapPin className="w-3 h-3" />{job.location}
@@ -189,7 +207,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
               'px-1.5 py-0.5 rounded text-[10px] border',
               job.location_type === 'remote' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
               : job.location_type === 'hybrid' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20'
-              : 'text-white/40 bg-white/5 border-white/10'
+              : 'text-muted-foreground bg-foreground/5 border-border'
             )}>
               {job.location_type.charAt(0).toUpperCase() + job.location_type.slice(1)}
             </span>
@@ -215,7 +233,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
         {(job.smart_tags ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1">
             {job.smart_tags.slice(0, 3).map(tag => (
-              <span key={tag} className={cn('text-[10px] px-1.5 py-0.5 rounded-full border', tagColors[tag] ?? 'bg-white/5 text-white/40 border-white/10')}>
+              <span key={tag} className={cn('text-[10px] px-1.5 py-0.5 rounded-full border', tagColors[tag] ?? 'bg-foreground/5 text-muted-foreground border-border')}>
                 {tag}
               </span>
             ))}
@@ -223,7 +241,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
         )}
 
         {/* Match breakdown */}
-        <div className="space-y-1.5 border-t border-white/5 pt-2">
+        <div className="space-y-1.5 border-t border-border pt-2">
           {(job.matched_skills ?? []).length > 0 && (
             <div className="flex items-start gap-1.5">
               <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
@@ -258,7 +276,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
 
         {/* AI summary snippet */}
         {job.ai_summary && !expanded && (
-          <p className="text-[11px] text-white/35 line-clamp-2 leading-relaxed">
+          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
             <Zap className="w-2.5 h-2.5 text-purple-400 inline mr-1" />
             {job.ai_summary}
           </p>
@@ -271,23 +289,23 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="border-t border-white/5 pt-2 space-y-1.5 overflow-hidden"
+              className="border-t border-border pt-2 space-y-1.5 overflow-hidden"
             >
               {job.contact_email && (
-                <div className="flex items-center gap-2 text-xs text-white/40">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Mail className="w-3 h-3" />{job.contact_email}
                 </div>
               )}
               {(job as any).contact_phone && (
-                <div className="flex items-center gap-2 text-xs text-white/40">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Phone className="w-3 h-3" />{(job as any).contact_phone}
                 </div>
               )}
               {job.description && (
-                <p className="text-xs text-white/40 leading-relaxed line-clamp-3">{job.description}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{job.description}</p>
               )}
               {job.employment_type && (
-                <span className="text-xs text-white/50">Type: {job.employment_type}</span>
+                <span className="text-xs text-muted-foreground">Type: {job.employment_type}</span>
               )}
             </motion.div>
           )}
@@ -297,7 +315,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
         {(job.contact_email || job.description) && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-full flex items-center justify-center gap-1 text-[10px] text-white/25 hover:text-white/50 transition-colors"
+            className="w-full flex items-center justify-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
           >
             <ChevronDown className={cn('w-3 h-3 transition-transform', expanded && 'rotate-180')} />
             {expanded ? 'Less' : 'More details'}
@@ -308,7 +326,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
         <div className="grid grid-cols-2 gap-1.5 pt-1">
           <Link
             to={`/jobs/${job.id}`}
-            className="flex items-center justify-center gap-1 py-2 rounded-xl glass border border-white/10 text-xs text-white/70 hover:text-white hover:border-white/25 transition-all"
+            className="flex items-center justify-center gap-1 py-2 rounded-xl glass border border-border text-xs text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all"
           >
             <ExternalLink className="w-3 h-3" /> Details
           </Link>
@@ -319,7 +337,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
               'flex items-center justify-center gap-1 py-2 rounded-xl border text-xs transition-all',
               shortlisted
                 ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
-                : 'bg-white/5 border-white/10 text-white/60 hover:border-white/25 hover:text-white'
+                : 'bg-foreground/5 border-border text-muted-foreground hover:border-accent/30 hover:text-foreground'
             )}
           >
             <Star className={cn('w-3 h-3', shortlisted && 'fill-yellow-400')} />
@@ -334,7 +352,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
             'w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs transition-all border',
             isCompared
               ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
-              : 'border-white/8 text-white/25 hover:text-white/60 hover:border-white/20'
+              : 'border-border text-muted-foreground/70 hover:text-muted-foreground hover:border-accent/20'
           )}
         >
           <GitCompare className="w-3 h-3" />

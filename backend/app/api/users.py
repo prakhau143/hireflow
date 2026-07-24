@@ -8,7 +8,7 @@ from app.models.user import User
 from app.utils.auth import get_current_user, require_admin
 from app.models.activity_log import ActivityLog
 from app.models.resume import Resume
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -666,3 +666,214 @@ async def check_readiness(user: User = Depends(get_current_user), db: AsyncSessi
         "smtp_configured": has_smtp,
         "ready": user.onboarding_complete and has_resume and has_smtp,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CAREER INTELLIGENCE — Career Health, Recruiter Visibility, Market Demand,
+# Salary Prediction, Weekly Goals, AI Career Coach.
+# Reads real DB data only. Never touches the job-matching engine.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/me/career-intelligence")
+async def career_intelligence(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.models.job import Job
+    from app.models.resume import Resume
+    from app.models.application import Application
+    from app.services.profile_service import compute_health_score
+    from app.services.career_intelligence_service import (
+        compute_market_demand, compute_salary_prediction,
+        compute_recruiter_visibility, compute_career_health,
+    )
+
+    jobs = (await db.execute(select(Job).where(Job.user_id == user.id))).scalars().all()
+    best_resume = (await db.execute(
+        select(Resume).where(Resume.user_id == user.id).order_by(Resume.ats_score.desc()).limit(1)
+    )).scalar_one_or_none()
+    resume_ats = best_resume.ats_score if best_resume else None
+
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    apps = (await db.execute(
+        select(Application.created_at).where(Application.user_id == user.id)
+    )).scalars().all()
+    def _naive(dt):
+        return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+    apps_30d = sum(1 for a in apps if _naive(a) and _naive(a) >= _naive(thirty_days_ago))
+
+    health = compute_health_score(user, resume_ats)
+    market_demand = compute_market_demand(jobs, user.skills or [])
+    recruiter_vis = compute_recruiter_visibility(user, health["score"], resume_ats, market_demand)
+    career_health = compute_career_health(health["score"], resume_ats, recruiter_vis["score"], apps_30d)
+    salary = compute_salary_prediction(user, jobs)
+
+    return {
+        "career_health": career_health,
+        "recruiter_visibility": recruiter_vis,
+        "market_demand": market_demand,
+        "salary_prediction": salary,
+        "profile_completeness": health["score"],
+        "resume_ats": resume_ats,
+        "applications_last_30d": apps_30d,
+    }
+
+
+class CareerCoachRequest(BaseModel):
+    question: str
+
+
+@router.get("/me/career-coach/prompts")
+async def career_coach_prompts():
+    from app.services.profile_service import SUGGESTED_PROMPTS
+    return {"prompts": SUGGESTED_PROMPTS}
+
+
+@router.post("/me/career-coach")
+async def career_coach(
+    body: CareerCoachRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from app.models.job import Job
+    from app.models.resume import Resume
+    from app.models.application import Application
+    from app.services.profile_service import ask_career_coach
+
+    if not body.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+
+    top_jobs = (await db.execute(
+        select(Job).where(Job.user_id == user.id).order_by(Job.match_score.desc()).limit(5)
+    )).scalars().all()
+    best_resume = (await db.execute(
+        select(Resume).where(Resume.user_id == user.id).order_by(Resume.ats_score.desc()).limit(1)
+    )).scalar_one_or_none()
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    apps = (await db.execute(select(Application.created_at).where(Application.user_id == user.id))).scalars().all()
+    def _naive(dt):
+        return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+    apps_30d = sum(1 for a in apps if _naive(a) and _naive(a) >= _naive(thirty_days_ago))
+
+    result = await ask_career_coach(body.question, user, top_jobs, best_resume, apps_30d)
+    db.add(ActivityLog(user_id=user.id, action="Asked AI Career Coach", description=body.question[:200]))
+    await db.commit()
+    return result
+
+
+# ---------------------------------------------------------------- weekly goals
+
+class WeeklyGoalCreate(BaseModel):
+    goal_type: str  # apply_jobs | learn_skill | improve_ats | custom
+    label: str
+    target: Optional[int] = None
+    skill: Optional[str] = None
+
+
+class WeeklyGoalUpdate(BaseModel):
+    completed: Optional[bool] = None
+
+
+@router.get("/me/weekly-goals")
+async def list_weekly_goals(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.models.weekly_goal import WeeklyGoal
+    from app.models.application import Application
+    from app.models.resume import Resume
+    from app.services.career_intelligence_service import (
+        _iso_week_start, default_goals_for_week, compute_goal_progress,
+    )
+
+    now = datetime.now(timezone.utc)
+    week_start = _iso_week_start(now)
+
+    goals = (await db.execute(
+        select(WeeklyGoal).where(WeeklyGoal.user_id == user.id, WeeklyGoal.week_start == week_start)
+    )).scalars().all()
+
+    best_resume = (await db.execute(
+        select(Resume).where(Resume.user_id == user.id).order_by(Resume.ats_score.desc()).limit(1)
+    )).scalar_one_or_none()
+    ats_now = best_resume.ats_score if best_resume else None
+
+    if not goals:
+        for g in default_goals_for_week(user, ats_now):
+            row = WeeklyGoal(user_id=user.id, week_start=week_start, **g)
+            db.add(row)
+            goals.append(row)
+        await db.commit()
+        for g in goals:
+            await db.refresh(g)
+
+    def _naive(dt):
+        return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+    week_start_dt = datetime(week_start.year, week_start.month, week_start.day)
+    apps = (await db.execute(
+        select(Application.created_at).where(Application.user_id == user.id)
+    )).scalars().all()
+    applications_this_week = sum(1 for a in apps if _naive(a) and _naive(a) >= week_start_dt)
+
+    ats_at_week_start = ats_now
+    if best_resume and best_resume.ats_history:
+        past_points = [p for p in best_resume.ats_history if (p.get("date") or "")[:10] < week_start.isoformat()]
+        if past_points:
+            ats_at_week_start = past_points[-1].get("score")
+
+    out = []
+    for g in goals:
+        progress = compute_goal_progress(g, user, applications_this_week, ats_at_week_start, ats_now)
+        out.append({
+            "id": g.id, "goal_type": g.goal_type, "label": g.label, "target": g.target,
+            "skill": g.skill, "completed": g.completed, **progress,
+        })
+    return {"week_start": week_start.isoformat(), "goals": out}
+
+
+@router.post("/me/weekly-goals")
+async def create_weekly_goal(
+    body: WeeklyGoalCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from app.models.weekly_goal import WeeklyGoal
+    from app.services.career_intelligence_service import _iso_week_start
+
+    if body.goal_type not in ("apply_jobs", "learn_skill", "improve_ats", "custom"):
+        raise HTTPException(status_code=400, detail="Invalid goal_type")
+    week_start = _iso_week_start(datetime.now(timezone.utc))
+    goal = WeeklyGoal(
+        user_id=user.id, week_start=week_start, goal_type=body.goal_type,
+        label=body.label, target=body.target, skill=body.skill,
+    )
+    db.add(goal)
+    await db.commit()
+    await db.refresh(goal)
+    return {"id": goal.id, "goal_type": goal.goal_type, "label": goal.label,
+            "target": goal.target, "skill": goal.skill, "completed": goal.completed}
+
+
+@router.patch("/me/weekly-goals/{goal_id}")
+async def update_weekly_goal(
+    goal_id: str, body: WeeklyGoalUpdate,
+    db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),
+):
+    from app.models.weekly_goal import WeeklyGoal
+    goal = (await db.execute(
+        select(WeeklyGoal).where(WeeklyGoal.id == goal_id, WeeklyGoal.user_id == user.id)
+    )).scalar_one_or_none()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if body.completed is not None:
+        goal.completed = body.completed
+    await db.commit()
+    return {"id": goal.id, "completed": goal.completed}
+
+
+@router.delete("/me/weekly-goals/{goal_id}", status_code=204)
+async def delete_weekly_goal(
+    goal_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),
+):
+    from app.models.weekly_goal import WeeklyGoal
+    goal = (await db.execute(
+        select(WeeklyGoal).where(WeeklyGoal.id == goal_id, WeeklyGoal.user_id == user.id)
+    )).scalar_one_or_none()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    await db.delete(goal)
+    await db.commit()

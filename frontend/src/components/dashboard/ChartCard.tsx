@@ -31,18 +31,18 @@ export default function ChartCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.35, ease: 'easeOut' }}
-      className={cn('glass rounded-2xl border border-white/10 p-5 flex flex-col hover:border-white/15 transition-colors', className)}
+      className={cn('glass rounded-2xl border border-border p-5 flex flex-col hover:border-accent/30 transition-colors', className)}
     >
       <div className="flex items-start justify-between gap-2 mb-4">
         <div className="flex items-center gap-2.5 min-w-0">
           {Icon && (
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0">
-              <Icon className="w-4 h-4 text-indigo-400" />
+            <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/20 flex items-center justify-center shrink-0">
+              <Icon className="w-4 h-4 text-accent" />
             </div>
           )}
           <div className="min-w-0">
-            <h3 className="text-white font-semibold text-sm truncate">{title}</h3>
-            {subtitle && <p className="text-white/35 text-xs mt-0.5 truncate">{subtitle}</p>}
+            <h3 className="text-foreground font-semibold text-sm truncate">{title}</h3>
+            {subtitle && <p className="text-muted-foreground text-xs mt-0.5 truncate">{subtitle}</p>}
           </div>
         </div>
         {actions}
@@ -51,14 +51,14 @@ export default function ChartCard({
       <div className="flex-1 relative" style={{ minHeight: height }}>
         {loading ? (
           <div className="absolute inset-0 space-y-3">
-            <div className="h-full rounded-xl bg-white/[0.03] shimmer" />
+            <div className="h-full rounded-xl bg-foreground/[0.03] shimmer" />
           </div>
         ) : empty ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5">
-            <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white/20" />
+            <div className="w-11 h-11 rounded-xl bg-foreground/5 border border-border flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-muted-foreground/50" />
             </div>
-            <p className="text-white/25 text-xs font-medium">{emptyLabel ?? 'No Data Available'}</p>
+            <p className="text-muted-foreground text-xs font-medium">{emptyLabel ?? 'No Data Available'}</p>
           </div>
         ) : (
           children

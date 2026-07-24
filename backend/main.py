@@ -15,6 +15,9 @@ from app.models.template import EmailTemplate
 from app.models.activity_log import ActivityLog
 from app.models.application import Application
 from app.models.import_session import ImportSession
+from app.models.weekly_goal import WeeklyGoal
+from app.models.password_reset_otp import PasswordResetOTP
+from app.models.system_email_template import SystemEmailTemplate
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.jobs import router as jobs_router
@@ -27,12 +30,19 @@ from app.api.dashboard import router as dashboard_router
 from app.api.applications import router as applications_router
 from app.api.imports import router as imports_router
 from app.api.review import router as review_router
+from app.api.system_templates import router as system_templates_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs("uploads/resumes", exist_ok=True)
     await create_tables()
+
+    from app.database import AsyncSessionLocal
+    from app.services.system_email_service import seed_all_templates
+    async with AsyncSessionLocal() as db:
+        await seed_all_templates(db)
+
     # Print masked Groq API key for debugging
     if settings.GROQ_API_KEY:
         masked_key = "*" * (len(settings.GROQ_API_KEY) - 4) + settings.GROQ_API_KEY[-4:]
@@ -72,6 +82,7 @@ app.include_router(dashboard_router, prefix="/api")
 app.include_router(applications_router, prefix="/api")
 app.include_router(imports_router, prefix="/api")
 app.include_router(review_router, prefix="/api")
+app.include_router(system_templates_router, prefix="/api")
 
 
 @app.get("/api/health")

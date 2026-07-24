@@ -20,6 +20,7 @@ import Login, { Register, ForgotPassword } from '@/pages/auth/Login'
 import AdminUsers from '@/pages/admin/AdminUsers'
 import ReviewPanel from '@/pages/admin/ReviewPanel'
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalytics'
+import SystemEmailTemplates from '@/pages/admin/SystemEmailTemplates'
 import { useAppStore } from '@/store/useAppStore'
 
 const queryClient = new QueryClient({
@@ -81,6 +82,7 @@ export default function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/import" element={<ImportJobs />} />
+                <Route path="/review" element={<ReviewPanel />} />
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetail />} />
                 <Route path="/resume" element={<ResumeManager />} />
@@ -98,6 +100,7 @@ export default function App() {
                 <Route path="/admin/jobs" element={<Jobs />} />
                 <Route path="/admin/ai" element={<ImportJobs />} />
                 <Route path="/admin/templates" element={<Templates />} />
+                <Route path="/admin/email-templates" element={<SystemEmailTemplates />} />
                 <Route path="/admin/smtp" element={<SmtpManager />} />
                 <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
                 <Route path="/admin/logs" element={<ActivityLogs />} />

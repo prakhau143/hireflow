@@ -26,8 +26,8 @@ export default function Archives() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Archives</h1>
-        <p className="text-white/40 text-sm mt-0.5">Jobs sorted by reason — understand why they didn't match</p>
+        <h1 className="text-2xl font-bold text-foreground">Archives</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">Jobs sorted by reason — understand why they didn't match</p>
       </div>
 
       {isLoading ? (
@@ -55,8 +55,8 @@ export default function Archives() {
                   className={cn('glass rounded-2xl border p-4', cat.bg)}
                 >
                   <cat.icon className={cn('w-5 h-5 mb-2', cat.color)} />
-                  <p className="text-2xl font-bold text-white">{count}</p>
-                  <p className="text-xs text-white/50 mt-0.5">{cat.label}</p>
+                  <p className="text-2xl font-bold text-foreground">{count}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{cat.label}</p>
                 </motion.div>
               )
             })}
@@ -72,33 +72,33 @@ export default function Archives() {
                   key={cat.key}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="glass rounded-2xl border border-white/10 overflow-hidden"
+                  className="glass rounded-2xl border border-border overflow-hidden"
                 >
-                  <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2.5">
+                  <div className="px-5 py-4 border-b border-border flex items-center gap-2.5">
                     <cat.icon className={cn('w-4 h-4', cat.color)} />
-                    <h2 className="text-white font-medium text-sm">{cat.label}</h2>
-                    <span className="text-xs text-white/30 ml-auto">{catJobs.length} jobs</span>
+                    <h2 className="text-foreground font-medium text-sm">{cat.label}</h2>
+                    <span className="text-xs text-muted-foreground ml-auto">{catJobs.length} jobs</span>
                   </div>
 
-                  <div className="divide-y divide-white/5">
+                  <div className="divide-y divide-border">
                     {catJobs.map((job, i) => (
                       <motion.div
                         key={job.id}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.05 }}
-                        className="px-5 py-4 flex items-center gap-4 hover:bg-white/3 transition-colors"
+                        className="px-5 py-4 flex items-center gap-4 hover:bg-foreground/[0.03] transition-colors"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-white/80 font-medium text-sm truncate">{job.title}</p>
-                          <p className="text-white/40 text-xs mt-0.5">{job.company} · {job.location}</p>
+                          <p className="text-foreground/85 font-medium text-sm truncate">{job.title}</p>
+                          <p className="text-muted-foreground text-xs mt-0.5">{job.company} · {job.location}</p>
                         </div>
                         <span className={cn('text-xs px-2.5 py-1 rounded-full border', getMatchBg(job.match_score ?? 0))}>
                           {job.match_score ?? 0}%
                         </span>
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
                           {(cat.key === 'missing_skills' ? (job.missing_skills ?? []) : (job.skills ?? [])).slice(0, 3).map((s: string) => (
-                            <span key={s} className="text-xs bg-white/5 text-white/40 px-1.5 py-0.5 rounded">{s}</span>
+                            <span key={s} className="text-xs bg-foreground/5 text-muted-foreground px-1.5 py-0.5 rounded">{s}</span>
                           ))}
                         </div>
                       </motion.div>

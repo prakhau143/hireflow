@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Briefcase, Archive, Mail, FileText,
   BarChart3, FileCode2, Activity, Settings, Users,
-  Import, Cpu, Database, ChevronLeft, Zap, ShieldCheck
+  Import, Cpu, Database, ChevronLeft, Zap, ShieldCheck, MailPlus
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 export const NAV_PERMISSIONS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'import', label: 'Import Jobs' },
+  { key: 'review', label: 'Review Queue' },
   { key: 'jobs', label: 'Jobs' },
   { key: 'archives', label: 'Archives' },
   { key: 'smtp', label: 'SMTP' },
@@ -25,6 +26,7 @@ export const NAV_PERMISSIONS = [
 const userNav = [
   { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', to: '/' },
   { key: 'import', icon: Import, label: 'Import Jobs', to: '/import' },
+  { key: 'review', icon: ShieldCheck, label: 'Review Queue', to: '/review' },
   { key: 'jobs', icon: Briefcase, label: 'Jobs', to: '/jobs' },
   { key: 'archives', icon: Archive, label: 'Archives', to: '/archives' },
   { key: 'smtp', icon: Mail, label: 'SMTP', to: '/smtp' },
@@ -38,10 +40,11 @@ const userNav = [
 const adminNav = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/admin' },
   { icon: Users, label: 'Users', to: '/admin/users' },
-  { icon: Import, label: 'Imported Jobs', to: '/admin/jobs' },
+  { icon: Cpu, label: 'Import Jobs', to: '/admin/ai' },
   { icon: ShieldCheck, label: 'Review Queue', to: '/admin/review' },
-  { icon: Cpu, label: 'AI Processing', to: '/admin/ai' },
+  { icon: Import, label: 'All Jobs', to: '/admin/jobs' },
   { icon: FileCode2, label: 'Templates', to: '/admin/templates' },
+  { icon: MailPlus, label: 'Email Templates', to: '/admin/email-templates' },
   { icon: Mail, label: 'SMTP Management', to: '/admin/smtp' },
   { icon: BarChart3, label: 'Analytics', to: '/admin/analytics' },
   { icon: Database, label: 'System Logs', to: '/admin/logs' },
@@ -63,7 +66,7 @@ export default function Sidebar() {
       transition={{ duration: 0.2, ease: 'easeInOut' }}
       className={cn(
         'fixed left-0 top-16 bottom-0 z-40',
-        'glass border-r border-white/10 overflow-hidden'
+        'glass border-r border-border overflow-hidden'
       )}
     >
       <div className="flex flex-col h-full py-4">
@@ -76,16 +79,16 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150',
-                  'hover:bg-white/10 group relative',
+                  'hover:bg-foreground/5 group relative',
                   isActive
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/20'
-                    : 'text-white/60 hover:text-white'
+                    ? 'bg-accent/15 text-accent border border-accent/20'
+                    : 'text-muted-foreground hover:text-foreground'
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <Icon className={cn('w-4 h-4 shrink-0', isActive && 'text-blue-400')} />
+                  <Icon className={cn('w-4 h-4 shrink-0', isActive && 'text-accent')} />
                   <AnimatePresence>
                     {!sidebarCollapsed && (
                       <motion.span
@@ -102,7 +105,7 @@ export default function Sidebar() {
 
                   {/* Tooltip when collapsed */}
                   {sidebarCollapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 glass rounded-lg text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    <div className="absolute left-full ml-2 px-2 py-1 glass rounded-lg text-xs text-foreground whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                       {label}
                     </div>
                   )}
@@ -116,7 +119,7 @@ export default function Sidebar() {
         <div className="px-2 pb-2">
           <button
             onClick={toggleSidebar}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/40 hover:text-white/70 hover:bg-white/10 transition-all w-full"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all w-full"
           >
             <motion.div animate={{ rotate: sidebarCollapsed ? 180 : 0 }} transition={{ duration: 0.2 }}>
               <ChevronLeft className="w-4 h-4" />
@@ -138,10 +141,10 @@ export default function Sidebar() {
 
         {/* Brand watermark */}
         {!sidebarCollapsed && (
-          <div className="px-4 py-3 border-t border-white/5">
+          <div className="px-4 py-3 border-t border-border">
             <div className="flex items-center gap-2">
-              <Zap className="w-3 h-3 text-blue-400/50" />
-              <span className="text-xs text-white/20">HireFlow v1.0</span>
+              <Zap className="w-3 h-3 text-accent/50" />
+              <span className="text-xs text-muted-foreground/60">HireFlow v1.0</span>
             </div>
           </div>
         )}

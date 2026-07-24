@@ -78,20 +78,20 @@ export default function BulkApplyModal({ jobIds, onClose }: { jobIds: string[]; 
       >
         <motion.div
           initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          className="glass rounded-2xl border border-white/15 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+          className="glass rounded-2xl border border-border w-full max-w-3xl max-h-[90vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
-          <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-white/10 bg-[#0d1424]/90 backdrop-blur-xl">
-            <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+          <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-border bg-card/90 backdrop-blur-xl">
+            <h3 className="text-foreground font-semibold text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-purple-400" />
               AI Application Review
               {data && (
-                <span className="text-[10px] text-white/35 font-normal">
+                <span className="text-[10px] text-muted-foreground font-normal">
                   Quota today: {data.quota.sent_today}/{data.quota.daily_limit} · {data.quota.remaining} left
                 </span>
               )}
             </h3>
-            <button onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5">
+            <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -100,8 +100,8 @@ export default function BulkApplyModal({ jobIds, onClose }: { jobIds: string[]; 
             {isLoading && (
               <div className="py-14 text-center space-y-3">
                 <RefreshCw className="w-6 h-6 text-purple-400 animate-spin mx-auto" />
-                <p className="text-white/50 text-sm">AI Agent is preparing {jobIds.length} personalized application{jobIds.length !== 1 ? 's' : ''}…</p>
-                <p className="text-white/25 text-xs">Picking templates · selecting best resume · writing unique emails</p>
+                <p className="text-muted-foreground text-sm">AI Agent is preparing {jobIds.length} personalized application{jobIds.length !== 1 ? 's' : ''}…</p>
+                <p className="text-muted-foreground/70 text-xs">Picking templates · selecting best resume · writing unique emails</p>
               </div>
             )}
             {!!error && (
@@ -125,13 +125,13 @@ export default function BulkApplyModal({ jobIds, onClose }: { jobIds: string[]; 
               const e = edits[p.job_id] ?? { subject: p.subject, body: p.body }
               const open = expanded === p.job_id
               return (
-                <div key={p.job_id} className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+                <div key={p.job_id} className="rounded-xl border border-border bg-foreground/[0.02] overflow-hidden">
                   <button onClick={() => setExpanded(open ? null : p.job_id)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.03]">
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-foreground/[0.03]">
                     <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-white/85 text-sm font-medium truncate">{p.job_title} · {p.company}</p>
-                      <p className="text-white/35 text-[11px] truncate">
+                      <p className="text-foreground/85 text-sm font-medium truncate">{p.job_title} · {p.company}</p>
+                      <p className="text-muted-foreground text-[11px] truncate">
                         To {p.to_email} · Template: {p.template_name ?? 'auto'} · Resume: {p.resume_name ?? 'none'}
                         {p.generated_by === 'ai' && <span className="text-purple-400"> · AI personalized</span>}
                       </p>
@@ -141,20 +141,20 @@ export default function BulkApplyModal({ jobIds, onClose }: { jobIds: string[]; 
                         <p className={cn('text-sm font-bold', p.reply_probability >= 70 ? 'text-emerald-400' : p.reply_probability >= 45 ? 'text-yellow-400' : 'text-red-400')}>
                           {p.reply_probability}%
                         </p>
-                        <p className="text-[9px] text-white/30">reply chance</p>
+                        <p className="text-[9px] text-muted-foreground">reply chance</p>
                       </div>
                     )}
                   </button>
                   {open && (
-                    <div className="px-4 pb-4 space-y-2 border-t border-white/5 pt-3">
-                      {p.reply_reason && <p className="text-[11px] text-white/40 italic">{p.reply_reason}</p>}
+                    <div className="px-4 pb-4 space-y-2 border-t border-border pt-3">
+                      {p.reply_reason && <p className="text-[11px] text-muted-foreground italic">{p.reply_reason}</p>}
                       <input value={e.subject}
                         onChange={ev => setEdits({ ...edits, [p.job_id]: { ...e, subject: ev.target.value } })}
-                        className="w-full glass rounded-lg px-3 py-2 text-xs text-white/80 border border-white/10 focus:border-indigo-500/40 focus:outline-none" />
+                        className="w-full glass rounded-lg px-3 py-2 text-xs text-foreground border border-border focus:border-indigo-500/40 focus:outline-none" />
                       <textarea value={e.body} rows={9}
                         onChange={ev => setEdits({ ...edits, [p.job_id]: { ...e, body: ev.target.value } })}
-                        className="w-full glass rounded-lg px-3 py-2 text-xs text-white/70 border border-white/10 focus:border-indigo-500/40 focus:outline-none leading-relaxed resize-y" />
-                      <p className="text-[10px] text-white/25 flex items-center gap-1">
+                        className="w-full glass rounded-lg px-3 py-2 text-xs text-foreground border border-border focus:border-indigo-500/40 focus:outline-none leading-relaxed resize-y" />
+                      <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
                         <FileText className="w-3 h-3" /> {p.resume_name ? `${p.resume_name} will be attached` : 'No resume on file — upload one in Resume Manager'}
                       </p>
                     </div>
@@ -175,7 +175,7 @@ export default function BulkApplyModal({ jobIds, onClose }: { jobIds: string[]; 
               </button>
             )}
             {!isLoading && pkgs.length === 0 && (data?.skipped?.length ?? 0) > 0 && (
-              <p className="text-white/30 text-xs text-center flex items-center justify-center gap-1.5 py-2">
+              <p className="text-muted-foreground text-xs text-center flex items-center justify-center gap-1.5 py-2">
                 <Mail className="w-3.5 h-3.5" /> Nothing sendable — all selected jobs were skipped
               </p>
             )}

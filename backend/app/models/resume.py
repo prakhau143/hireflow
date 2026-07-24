@@ -31,6 +31,17 @@ class Resume(Base):
     role_recommendations: Mapped[Optional[List]] = mapped_column(JSON, nullable=True) # [{role, match, reason}]
     ats_history: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)          # [{date, score}] — every analysis appends
 
+    # Resume Intelligence Engine — deep structured extraction
+    contact_info: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)          # {name, phone, email, location}
+    education: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)             # [{college, degree, cgpa, year}]
+    experience_entries: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)    # [{company, role, start, end, current, duration, responsibilities}]
+    projects_extracted: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)    # [{name, description, tech, github, live}]
+    certificates_extracted: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)  # [{name, issuer}]
+    skill_intelligence: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)    # [{skill, category, years, confidence, last_used}]
+    github_detected: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    portfolio_detected: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    total_experience_computed: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # e.g. "3 Years 4 Months" — pure date arithmetic, no AI
+
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc),

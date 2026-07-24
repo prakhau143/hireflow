@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.job import Job
 from app.models.activity_log import ActivityLog
-from app.utils.auth import require_admin
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -58,7 +58,7 @@ async def review_jobs(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_admin),
+    user: User = Depends(get_current_user),
 ):
     """Paginated review queue. Only jobs that went through the import pipeline
     (review_status set) appear here — manual/legacy rows are excluded."""
@@ -110,7 +110,7 @@ class BulkRequest(BaseModel):
 
 
 @router.post("/bulk")
-async def bulk_action(body: BulkRequest, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def bulk_action(body: BulkRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     if body.action not in ("approve", "reject", "delete", "merge"):
         raise HTTPException(400, "action must be approve|reject|delete|merge")
     if not body.job_ids:
@@ -185,7 +185,7 @@ class ReviewEdit(BaseModel):
 
 
 @router.patch("/jobs/{job_id}")
-async def edit_job(job_id: str, body: ReviewEdit, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def edit_job(job_id: str, body: ReviewEdit, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     j = (await db.execute(
         select(Job).where(Job.id == job_id, Job.user_id == user.id)
     )).scalar_one_or_none()

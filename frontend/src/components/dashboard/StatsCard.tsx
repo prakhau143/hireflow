@@ -62,7 +62,7 @@ export default function StatsCard({ icon: Icon, label, value, change, color, del
         {change !== undefined && (
           <div className={cn(
             'flex items-center gap-1 text-xs px-2 py-1 rounded-full',
-            isPositive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+            isPositive ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
           )}>
             {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             {Math.abs(change)}%
@@ -71,14 +71,14 @@ export default function StatsCard({ icon: Icon, label, value, change, color, del
       </div>
       <div className="space-y-1">
         <motion.p
-          className="text-3xl font-bold text-white"
+          className="text-3xl font-bold text-foreground"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: delay + 0.2 }}
         >
           {value}
         </motion.p>
-        <p className="text-sm text-white/50">{label}</p>
+        <p className="text-sm text-muted-foreground">{label}</p>
       </div>
     </motion.div>
   )

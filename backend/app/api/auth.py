@@ -1,25 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 import random
-import smtplib
-import ssl
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 from app.database import get_db
 from app.models.user import User
+from app.models.password_reset_otp import PasswordResetOTP
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut
 from app.utils.auth import hash_password, verify_password, create_token, get_current_user
+from app.services.system_email_service import send_system_email
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# In-memory OTP store — {email: {otp, expires_at, verified}}
-_otp_store: dict[str, dict] = {}
+# Forgot-password tuning — matches HireFlow's professional OTP policy
+OTP_EXPIRY_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+OTP_RESEND_COOLDOWN_SECONDS = 60
+OTP_MAX_PER_HOUR = 5
 
 
 # ── Pydantic models ────────────────────────────────────────────────────────────
@@ -42,77 +43,16 @@ def _make_otp() -> str:
     return str(random.randint(100000, 999999))
 
 
-def _send_otp_email(to_email: str, name: str, otp: str) -> None:
-    """Send OTP using system SMTP credentials from .env (SMTP_USER / SMTP_PASS)."""
-    if not settings.SMTP_USER or not settings.SMTP_PASS:
-        raise RuntimeError(
-            "System SMTP not configured. Set SMTP_USER and SMTP_PASS in the backend .env file."
-        )
-
-    from_addr = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
-    context = ssl.create_default_context()
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "HireFlow — Your Password Reset OTP"
-    msg["From"] = f"{settings.SMTP_FROM_NAME} <{from_addr}>"
-    msg["To"] = to_email
-
-    html = f"""<!DOCTYPE html>
-<html>
-<body style="margin:0;padding:0;background:#0a0f1e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr><td align="center" style="padding:40px 16px;">
-      <table width="480" cellpadding="0" cellspacing="0"
-             style="background:#111827;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
-        <tr>
-          <td style="background:linear-gradient(135deg,#4f46e5,#6366f1);padding:28px 32px;">
-            <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">
-              HireFlow <span style="font-size:13px;font-weight:400;opacity:.7;">AI</span>
-            </h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px;">
-            <p style="color:rgba(255,255,255,0.7);margin:0 0 8px;">
-              Hi <strong style="color:#fff;">{name}</strong>,
-            </p>
-            <p style="color:rgba(255,255,255,0.5);margin:0 0 24px;font-size:14px;">
-              We received a request to reset your HireFlow password. Use the OTP below:
-            </p>
-            <div style="background:#0a0f1e;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
-              <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#818cf8;">{otp}</span>
-            </div>
-            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0;">
-              This OTP is valid for <strong style="color:rgba(255,255,255,0.6);">10 minutes</strong>.
-              If you didn't request a password reset, ignore this email.
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.05);">
-            <p style="color:rgba(255,255,255,0.2);font-size:12px;margin:0;">
-              Sent by HireFlow AI &middot; Do not reply to this email.
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>"""
-
-    msg.attach(MIMEText(html, "html"))
-
-    if settings.SMTP_ENCRYPTION == "SSL":
-        server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, context=context, timeout=15)
-    else:
-        server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
-        if settings.SMTP_ENCRYPTION == "TLS":
-            server.starttls(context=context)
-
-    server.login(settings.SMTP_USER, settings.SMTP_PASS)
-    server.send_message(msg)
-    server.quit()
+async def _send_otp_email(db: AsyncSession, to_email: str, name: str, otp: str) -> None:
+    """Send OTP using SYSTEM SMTP credentials from .env (SMTP_USER / SMTP_PASS) —
+    never the user's own configured SMTP (that's reserved for job-application
+    emails only; see app/services/application_service.py). Content lives in the
+    DB-editable 'password_reset_otp' system email template."""
+    await send_system_email(db, "password_reset_otp", to_email, {
+        "name": name,
+        "otp_spaced": " ".join(otp),  # visually group the digits without changing the value
+        "expiry_minutes": OTP_EXPIRY_MINUTES,
+    })
 
 
 # ── Auth endpoints ─────────────────────────────────────────────────────────────
@@ -131,6 +71,11 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
+    try:
+        await send_system_email(db, "welcome", user.email, {"name": user.name})
+    except Exception as e:
+        print(f"[Auth] welcome email failed for {user.email}: {e}")  # best-effort — never block registration
 
     return TokenResponse(
         access_token=create_token(user.id, user.role, user.token_version),
@@ -167,8 +112,9 @@ async def me(user: User = Depends(get_current_user)):
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    """Generate a 6-digit OTP and send it via the system SMTP configured in .env."""
+async def forgot_password(body: ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """Generate a 6-digit OTP (hashed at rest), rate-limited and cooldown-gated,
+    sent only via System SMTP — never the user's own SMTP configuration."""
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
@@ -176,46 +122,109 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
     if not user:
         return {"message": "If that email is registered, an OTP has been sent."}
 
+    now = datetime.now(timezone.utc)
+
+    # Resend cooldown — 60s since the last OTP issued to this user
+    last = (await db.execute(
+        select(PasswordResetOTP).where(PasswordResetOTP.user_id == user.id)
+        .order_by(PasswordResetOTP.created_at.desc()).limit(1)
+    )).scalar_one_or_none()
+    if last:
+        last_created = last.created_at.replace(tzinfo=timezone.utc) if last.created_at.tzinfo is None else last.created_at
+        elapsed = (now - last_created).total_seconds()
+        if elapsed < OTP_RESEND_COOLDOWN_SECONDS:
+            wait = int(OTP_RESEND_COOLDOWN_SECONDS - elapsed)
+            raise HTTPException(status_code=429, detail=f"Please wait {wait}s before requesting another OTP.")
+
+    # Rate limit — max 5 OTPs per hour per user
+    hour_ago = now - timedelta(hours=1)
+    recent_count = (await db.execute(
+        select(func.count(PasswordResetOTP.id)).where(
+            PasswordResetOTP.user_id == user.id, PasswordResetOTP.created_at >= hour_ago
+        )
+    )).scalar() or 0
+    if recent_count >= OTP_MAX_PER_HOUR:
+        raise HTTPException(status_code=429, detail="Too many OTP requests. Please try again in an hour.")
+
     otp = _make_otp()
-    _otp_store[body.email] = {
-        "otp": otp,
-        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
-        "verified": False,
-    }
+    otp_row = PasswordResetOTP(
+        user_id=user.id, email=user.email, otp_hash=hash_password(otp),
+        expires_at=now + timedelta(minutes=OTP_EXPIRY_MINUTES),
+        ip_address=request.client.host if request.client else None,
+    )
+    db.add(otp_row)
 
     try:
-        _send_otp_email(user.email, user.name, otp)
+        await _send_otp_email(db, user.email, user.name, otp)
     except RuntimeError as e:
-        _otp_store.pop(body.email, None)
+        await db.rollback()
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
-        _otp_store.pop(body.email, None)
+        await db.rollback()
+        err_lower = str(e).lower()
+        if "535" in str(e) or "5.7.8" in str(e) or "badcredentials" in err_lower or "authentication" in err_lower:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    "System email account rejected the App Password (Gmail 535 error). "
+                    "This is the platform's own SMTP_USER/SMTP_PASS in backend/.env, not your personal "
+                    "SMTP settings — an admin needs to generate a fresh Gmail App Password "
+                    "(myaccount.google.com → Security → App Passwords) and update backend/.env."
+                ),
+            )
         raise HTTPException(status_code=502, detail=f"Failed to send email: {str(e)}")
 
-    return {"message": "If that email is registered, an OTP has been sent."}
+    await db.commit()
+    return {"message": "If that email is registered, an OTP has been sent.",
+            "resend_after_seconds": OTP_RESEND_COOLDOWN_SECONDS}
 
 
 @router.post("/verify-otp")
-async def verify_otp(body: VerifyOTPRequest):
-    """Verify the 6-digit OTP. Returns a short-lived reset_token on success."""
-    entry = _otp_store.get(body.email)
+async def verify_otp(body: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
+    """Verify the 6-digit OTP against its hash. Max 5 attempts per code."""
+    user = (await db.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="No OTP requested for this email. Request a new one.")
+
+    entry = (await db.execute(
+        select(PasswordResetOTP).where(
+            PasswordResetOTP.user_id == user.id, PasswordResetOTP.used.is_(False)
+        ).order_by(PasswordResetOTP.created_at.desc()).limit(1)
+    )).scalar_one_or_none()
     if not entry:
         raise HTTPException(status_code=400, detail="No OTP requested for this email. Request a new one.")
 
-    if datetime.now(timezone.utc) > entry["expires_at"]:
-        _otp_store.pop(body.email, None)
+    now = datetime.now(timezone.utc)
+    expires_at = entry.expires_at.replace(tzinfo=timezone.utc) if entry.expires_at.tzinfo is None else entry.expires_at
+    if now > expires_at:
+        entry.used = True
+        await db.commit()
         raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
 
-    if entry["otp"] != body.otp.strip():
-        raise HTTPException(status_code=400, detail="Incorrect OTP. Please try again.")
+    if entry.attempts >= OTP_MAX_ATTEMPTS:
+        entry.used = True
+        await db.commit()
+        raise HTTPException(status_code=400, detail="Too many incorrect attempts. Please request a new OTP.")
 
-    _otp_store[body.email]["verified"] = True
+    if not verify_password(body.otp.strip(), entry.otp_hash):
+        entry.attempts += 1
+        remaining = OTP_MAX_ATTEMPTS - entry.attempts
+        await db.commit()
+        if remaining <= 0:
+            entry.used = True
+            await db.commit()
+            raise HTTPException(status_code=400, detail="Too many incorrect attempts. Please request a new OTP.")
+        raise HTTPException(status_code=400, detail=f"Incorrect OTP. {remaining} attempt{'s' if remaining != 1 else ''} remaining.")
+
+    entry.verified = True
+    await db.commit()
 
     reset_token = jwt.encode(
         {
             "sub": body.email,
+            "otp_id": entry.id,
             "type": "pwd_reset",
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES),
         },
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
@@ -225,17 +234,27 @@ async def verify_otp(body: VerifyOTPRequest):
 
 @router.post("/reset-password")
 async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    """Set a new password using the reset_token from /verify-otp."""
+    """Set a new password using the reset_token from /verify-otp. Invalidates all
+    existing sessions (token_version bump) since the credential just changed."""
     try:
         payload = jwt.decode(body.reset_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         if payload.get("type") != "pwd_reset":
             raise HTTPException(status_code=400, detail="Invalid reset token")
         email: str = payload["sub"]
+        otp_id: str | None = payload.get("otp_id")
     except JWTError:
         raise HTTPException(status_code=400, detail="Reset token is invalid or expired")
 
-    if not _otp_store.get(email, {}).get("verified"):
+    if not otp_id:
+        raise HTTPException(status_code=400, detail="Invalid reset token")
+
+    entry = (await db.execute(
+        select(PasswordResetOTP).where(PasswordResetOTP.id == otp_id, PasswordResetOTP.email == email)
+    )).scalar_one_or_none()
+    if not entry or not entry.verified:
         raise HTTPException(status_code=400, detail="OTP not verified. Start over.")
+    if entry.used:
+        raise HTTPException(status_code=400, detail="This reset link has already been used. Please request a new OTP.")
 
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
@@ -246,7 +265,8 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
         raise HTTPException(status_code=404, detail="User not found")
 
     user.hashed_password = hash_password(body.new_password)
+    user.token_version = (user.token_version or 0) + 1  # sign out every existing session
+    entry.used = True
     await db.commit()
 
-    _otp_store.pop(email, None)
     return {"message": "Password reset successful. You can now log in."}

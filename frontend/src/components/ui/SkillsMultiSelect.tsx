@@ -229,7 +229,7 @@ export default function SkillsMultiSelect({
 
   return (
     <div ref={containerRef} className="relative">
-      <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">
+      <label className="text-xs text-muted-foreground uppercase tracking-wider mb-2 block">
         Skills {required && <span className="text-red-400">*</span>}
       </label>
 
@@ -237,7 +237,7 @@ export default function SkillsMultiSelect({
       <div
         onClick={toggleDropdown}
         className={`glass rounded-xl border transition-colors cursor-pointer min-h-[48px] p-2 flex flex-wrap gap-2 items-center ${
-          error ? 'border-red-500/50' : 'border-white/10 focus-within:border-indigo-500/50'
+          error ? 'border-red-500/50' : 'border-border focus-within:border-indigo-500/50'
         }`}
       >
         {value.map((skill) => (
@@ -265,13 +265,13 @@ export default function SkillsMultiSelect({
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={value.length === 0 ? placeholder : ''}
-            className="w-full bg-transparent text-sm text-white placeholder:text-white/25 outline-none"
+            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 outline-none"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
 
         <ChevronDown
-          className={`w-4 h-4 text-white/30 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </div>
 
@@ -289,17 +289,17 @@ export default function SkillsMultiSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 w-full mt-2 glass rounded-xl border border-white/10 overflow-hidden max-h-[400px] overflow-y-auto"
+            className="absolute z-50 w-full mt-2 glass rounded-xl border border-border overflow-hidden max-h-[400px] overflow-y-auto"
           >
-            <div className="p-3 border-b border-white/10">
+            <div className="p-3 border-b border-border">
               <div className="flex items-center gap-2 px-3 py-2 glass rounded-lg">
-                <Search className="w-4 h-4 text-white/30" />
+                <Search className="w-4 h-4 text-muted-foreground" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search skills..."
-                  className="flex-1 bg-transparent text-sm text-white placeholder:text-white/25 outline-none"
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 outline-none"
                   autoFocus
                 />
               </div>
@@ -310,7 +310,7 @@ export default function SkillsMultiSelect({
               {showCustomSkill && (
                 <button
                   onClick={() => addCustomSkill(searchQuery.trim())}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4 text-indigo-400" />
                   Add "{searchQuery.trim()}"
@@ -320,7 +320,7 @@ export default function SkillsMultiSelect({
               {/* Frequent skills (shown when no search) */}
               {!searchQuery && frequentSkills.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs text-white/40 uppercase tracking-wider px-3 py-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider px-3 py-2">
                     Frequently Selected
                   </p>
                   <div className="flex flex-wrap gap-2 px-3">
@@ -328,7 +328,7 @@ export default function SkillsMultiSelect({
                       <button
                         key={skill}
                         onClick={() => addSkill(skill)}
-                        className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/70 hover:bg-indigo-500/20 hover:text-indigo-300 border border-white/10 hover:border-indigo-500/30 transition-colors"
+                        className="px-3 py-1.5 rounded-full text-xs bg-foreground/5 text-muted-foreground hover:bg-indigo-500/20 hover:text-indigo-300 border border-border hover:border-indigo-500/30 transition-colors"
                       >
                         {skill}
                       </button>
@@ -340,14 +340,14 @@ export default function SkillsMultiSelect({
               {/* Grouped skills */}
               {groupedSkills.map((group) => (
                 <div key={group.name} className="mb-3 last:mb-0">
-                  <p className="text-xs text-white/40 uppercase tracking-wider px-3 py-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider px-3 py-2">
                     {group.name}
                   </p>
                   {group.skills.map((skill) => (
                     <button
                       key={skill}
                       onClick={() => addSkill(skill)}
-                      className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors flex items-center justify-between group"
+                      className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors flex items-center justify-between group"
                     >
                       <span>{skill}</span>
                       <Check className="w-4 h-4 opacity-0 group-hover:opacity-100 text-indigo-400 transition-opacity" />
@@ -358,7 +358,7 @@ export default function SkillsMultiSelect({
 
               {/* No results */}
               {filteredSkills.length === 0 && !showCustomSkill && (
-                <div className="px-3 py-8 text-center text-white/30 text-sm">
+                <div className="px-3 py-8 text-center text-muted-foreground text-sm">
                   No skills found
                 </div>
               )}

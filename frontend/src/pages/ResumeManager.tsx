@@ -8,14 +8,16 @@ import api from '@/lib/api'
 import toast from 'react-hot-toast'
 import type { Resume } from '@/types'
 import ResumeIntelligence from '@/components/resume/ResumeIntelligence'
+import ResumeDeepDive from '@/components/resume/ResumeDeepDive'
+import ProfileGapSuggestions from '@/components/resume/ProfileGapSuggestions'
 
 function HealthWidget({ label, score, highlight = false }: { label: string; score: number; highlight?: boolean }) {
   const color = score >= 90 ? 'text-emerald-400' : score >= 75 ? 'text-yellow-400' : 'text-red-400'
-  const bgColor = highlight ? 'bg-indigo-500/20 border-indigo-500/30' : 'bg-white/5 border-white/10'
+  const bgColor = highlight ? 'bg-indigo-500/20 border-indigo-500/30' : 'bg-foreground/5 border-border'
   
   return (
     <div className={cn('glass rounded-xl border p-3 text-center', bgColor, highlight && 'ring-2 ring-indigo-500/20')}>
-      <p className="text-xs text-white/50 mb-1">{label}</p>
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
       <p className={cn('text-xl font-bold', color)}>{score}</p>
     </div>
   )
@@ -44,12 +46,12 @@ function InsightCard({ title, icon: Icon, color, items, emptyText }: {
   }
 
   return (
-    <div className="glass rounded-2xl border border-white/10 p-5">
+    <div className="glass rounded-2xl border border-border p-5">
       <h3 className={cn('text-sm font-medium mb-3 flex items-center gap-2', iconColorMap[color])}>
         <Icon className="w-4 h-4" /> {title}
       </h3>
       {!items?.length ? (
-        <p className="text-xs text-white/30">{emptyText}</p>
+        <p className="text-xs text-muted-foreground">{emptyText}</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {items.map((item, i) => (
@@ -141,8 +143,8 @@ export default function ResumeManager() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Resume Manager</h1>
-        <p className="text-white/40 text-sm mt-0.5">Manage, analyze, and improve your resumes</p>
+        <h1 className="text-2xl font-bold text-foreground">Resume Manager</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">Manage, analyze, and improve your resumes</p>
       </div>
 
       {isLoading ? (
@@ -167,14 +169,14 @@ export default function ResumeManager() {
         <div className="flex gap-6 min-w-0">
           {/* Resume List */}
           <div className="w-52 shrink-0 space-y-3">
-            <label className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl glass border border-dashed border-white/20 text-sm text-white/50 hover:text-white/70 hover:border-white/30 transition-all cursor-pointer">
+            <label className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl glass border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all cursor-pointer">
               <Plus className="w-4 h-4" />
               Add Resume
               <input type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
             </label>
 
             {!resumes?.length ? (
-              <p className="text-xs text-white/30 text-center pt-4">No resumes yet</p>
+              <p className="text-xs text-muted-foreground text-center pt-4">No resumes yet</p>
             ) : (
               <>
                 {/* Show only the most recent resume */}
@@ -189,16 +191,16 @@ export default function ResumeManager() {
                         'w-full text-left p-3 rounded-xl border transition-all',
                         selectedId === latestResume.id
                           ? 'glass border-indigo-500/30 bg-indigo-500/10'
-                          : 'glass border-white/10 hover:border-white/20'
+                          : 'glass border-border hover:border-accent/30'
                       )}
                     >
                       <div className="flex items-center gap-2.5">
-                        <FileText className={cn('w-4 h-4 shrink-0', selectedId === latestResume.id ? 'text-indigo-400' : 'text-white/40')} />
+                        <FileText className={cn('w-4 h-4 shrink-0', selectedId === latestResume.id ? 'text-indigo-400' : 'text-muted-foreground')} />
                         <div className="min-w-0">
-                          <p className={cn('text-sm font-medium truncate', selectedId === latestResume.id ? 'text-indigo-300' : 'text-white/70')}>
+                          <p className={cn('text-sm font-medium truncate', selectedId === latestResume.id ? 'text-indigo-300' : 'text-foreground/80')}>
                             {latestResume.name}
                           </p>
-                          <p className="text-xs text-white/30 mt-0.5">ATS: {latestResume.ats_score ?? '—'}/100</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">ATS: {latestResume.ats_score ?? '—'}/100</p>
                         </div>
                       </div>
                     </motion.button>
@@ -212,7 +214,7 @@ export default function ResumeManager() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 px-2">
                   <Briefcase className="w-4 h-4 text-purple-400" />
-                  <span className="text-xs font-medium text-white/60">Recommended Jobs</span>
+                  <span className="text-xs font-medium text-muted-foreground">Recommended Jobs</span>
                 </div>
                 {recommendations.slice(0, 6).map((rec: any) => (
                   <motion.button
@@ -223,12 +225,12 @@ export default function ResumeManager() {
                       'w-full text-left p-2.5 rounded-xl border transition-all',
                       selectedJob === rec.title
                         ? 'glass border-purple-500/30 bg-purple-500/10'
-                        : 'glass border-white/10 hover:border-white/20'
+                        : 'glass border-border hover:border-accent/30'
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <div className="min-w-0 flex-1">
-                        <p className={cn('text-xs font-medium truncate', selectedJob === rec.title ? 'text-purple-300' : 'text-white/70')}>
+                        <p className={cn('text-xs font-medium truncate', selectedJob === rec.title ? 'text-purple-300' : 'text-foreground/80')}>
                           {rec.title}
                         </p>
                       </div>
@@ -265,18 +267,18 @@ export default function ResumeManager() {
                 className="flex-1 min-w-0 space-y-4 overflow-hidden"
               >
                 {/* Header */}
-                <div className="glass rounded-2xl border border-white/10 p-5">
+                <div className="glass rounded-2xl border border-border p-5">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="flex-1">
-                      <h2 className="text-xl font-bold text-white">
+                      <h2 className="text-xl font-bold text-foreground">
                         {selectedJob ? `Analysis for: ${selectedJob}` : resume.name}
                       </h2>
-                      <p className="text-white/40 text-sm mt-1">
+                      <p className="text-muted-foreground text-sm mt-1">
                         {selectedJob ? `Resume: ${resume.name}` : `Last updated: ${new Date(resume.updated_at).toLocaleDateString()}`}
                       </p>
 
                       <div className="flex gap-3 mt-4 flex-wrap">
-                        <label className="flex items-center gap-2 px-4 py-2 rounded-xl glass border border-white/15 text-sm text-white/70 hover:text-white transition-all cursor-pointer">
+                        <label className="flex items-center gap-2 px-4 py-2 rounded-xl glass border border-border text-sm text-foreground/80 hover:text-foreground transition-all cursor-pointer">
                           <Upload className="w-4 h-4" />
                           Upload New
                           <input type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
@@ -294,7 +296,7 @@ export default function ResumeManager() {
                           whileTap={{ scale: 0.97 }}
                           onClick={() => deleteMutation.mutate(resume.id)}
                           disabled={deleteMutation.isPending}
-                          className="p-2 rounded-xl glass border border-white/10 text-white/30 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-60"
+                          className="p-2 rounded-xl glass border border-border text-muted-foreground hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-60"
                         >
                           <Trash2 className="w-4 h-4" />
                         </motion.button>
@@ -305,7 +307,7 @@ export default function ResumeManager() {
                     <div className="shrink-0">
                       <div className="relative">
                         <svg width="100" height="100" viewBox="0 0 100 100">
-                          <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+                          <circle cx="50" cy="50" r="42" fill="none" stroke="var(--border)" strokeWidth="5" />
                           <circle
                             cx="50" cy="50" r="42" fill="none"
                             stroke={atsColor} strokeWidth="5" strokeLinecap="round"
@@ -317,8 +319,8 @@ export default function ResumeManager() {
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <span className="text-2xl font-bold" style={{ color: atsColor }}>{jobAnalysis?.ats_score ?? resume.ats_score ?? '—'}</span>
-                          <span className="text-xs text-white/30">/ 100</span>
-                          <span className="text-xs text-white/40 mt-0.5">ATS Score</span>
+                          <span className="text-xs text-muted-foreground">/ 100</span>
+                          <span className="text-xs text-muted-foreground mt-0.5">ATS Score</span>
                         </div>
                       </div>
                     </div>
@@ -326,9 +328,9 @@ export default function ResumeManager() {
                 </div>
 
                 {analyzingJob ? (
-                  <div className="glass rounded-2xl border border-white/10 p-8 text-center">
+                  <div className="glass rounded-2xl border border-border p-8 text-center">
                     <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-white/60">Analyzing resume for {selectedJob}...</p>
+                    <p className="text-muted-foreground">Analyzing resume for {selectedJob}...</p>
                   </div>
                 ) : jobAnalysis ? (
                   /* Job-specific analysis */
@@ -365,8 +367,8 @@ export default function ResumeManager() {
 
                     {/* Project Relevance */}
                     {jobAnalysis.project_relevance && (
-                      <div className="glass rounded-2xl border border-white/10 p-5">
-                        <h3 className="text-white text-sm font-medium mb-3">Project Analysis</h3>
+                      <div className="glass rounded-2xl border border-border p-5">
+                        <h3 className="text-foreground text-sm font-medium mb-3">Project Analysis</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-emerald-400 mb-2">Relevant Projects</p>
@@ -390,20 +392,20 @@ export default function ResumeManager() {
 
                     {/* Experience & Education Match */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="glass rounded-2xl border border-white/10 p-4">
-                        <h3 className="text-white text-sm font-medium mb-2">Experience Match</h3>
-                        <p className="text-xs text-white/60">{jobAnalysis.experience_match}</p>
+                      <div className="glass rounded-2xl border border-border p-4">
+                        <h3 className="text-foreground text-sm font-medium mb-2">Experience Match</h3>
+                        <p className="text-xs text-muted-foreground">{jobAnalysis.experience_match}</p>
                       </div>
-                      <div className="glass rounded-2xl border border-white/10 p-4">
-                        <h3 className="text-white text-sm font-medium mb-2">Education Match</h3>
-                        <p className="text-xs text-white/60">{jobAnalysis.education_match}</p>
+                      <div className="glass rounded-2xl border border-border p-4">
+                        <h3 className="text-foreground text-sm font-medium mb-2">Education Match</h3>
+                        <p className="text-xs text-muted-foreground">{jobAnalysis.education_match}</p>
                       </div>
                     </div>
 
                     {/* Prioritized Suggestions */}
                     {jobAnalysis.suggestions && jobAnalysis.suggestions.length > 0 && (
-                      <div className="glass rounded-2xl border border-white/10 p-5">
-                        <h3 className="text-white text-sm font-medium mb-3">AI Suggestions</h3>
+                      <div className="glass rounded-2xl border border-border p-5">
+                        <h3 className="text-foreground text-sm font-medium mb-3">AI Suggestions</h3>
                         <div className="space-y-2">
                           {jobAnalysis.suggestions.map((s: any, i: number) => (
                             <div key={i} className="flex items-start gap-2">
@@ -415,7 +417,7 @@ export default function ResumeManager() {
                               )}>
                                 {s.priority}
                               </span>
-                              <p className="text-xs text-white/60">{s.text}</p>
+                              <p className="text-xs text-muted-foreground">{s.text}</p>
                             </div>
                           ))}
                         </div>
@@ -470,7 +472,7 @@ export default function ResumeManager() {
                         </h3>
                         <ul className="space-y-2">
                           {(resume as any).suggestions.map((s: string, i: number) => (
-                            <li key={i} className="flex items-start gap-2 text-xs text-white/60">
+                            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                               <div className="w-1.5 h-1.5 rounded-full bg-purple-400/60 mt-1.5 shrink-0" />
                               {s}
                             </li>
@@ -478,6 +480,10 @@ export default function ResumeManager() {
                         </ul>
                       </div>
                     )}
+
+                    {/* Resume Intelligence Engine: profile-gap sync + deep structured breakdown */}
+                    <ProfileGapSuggestions resumeId={resume.id} />
+                    <ResumeDeepDive resume={resume} />
                   </>
                 )}
               </motion.div>

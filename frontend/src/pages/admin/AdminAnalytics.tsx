@@ -37,21 +37,21 @@ function Heatmap({ hm }: { hm: NonNullable<AdminAnalytics['activity_heatmap']> }
       <div className="grid gap-1" style={{ gridTemplateColumns: `44px repeat(${hm.buckets.length}, 1fr)` }}>
         <span />
         {hm.buckets.map(b => (
-          <span key={b} className="text-[9px] text-white/30 text-center">{b}</span>
+          <span key={b} className="text-[9px] text-muted-foreground text-center">{b}</span>
         ))}
         {hm.days.map((d, di) => (
           [
-            <span key={d} className="text-[10px] text-white/40 leading-6">{d}</span>,
+            <span key={d} className="text-[10px] text-muted-foreground leading-6">{d}</span>,
             ...hm.data[di].map((count, bi) => (
               <motion.div
                 key={`${d}-${bi}`}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 transition={{ delay: (di * hm.buckets.length + bi) * 0.008 }}
                 title={`${d} ${hm.buckets[bi]}: ${count} action${count !== 1 ? 's' : ''}`}
-                className="h-6 rounded-md border border-white/5"
+                className="h-6 rounded-md border border-border"
                 style={{
                   background: count === 0
-                    ? 'rgba(255,255,255,0.02)'
+                    ? 'color-mix(in srgb, var(--foreground) 2%, transparent)'
                     : `rgba(129,140,248,${0.15 + 0.75 * (count / hm.max)})`,
                 }}
               />
@@ -59,7 +59,7 @@ function Heatmap({ hm }: { hm: NonNullable<AdminAnalytics['activity_heatmap']> }
           ]
         ))}
       </div>
-      <div className="flex items-center justify-end gap-1.5 mt-3 text-[9px] text-white/30">
+      <div className="flex items-center justify-end gap-1.5 mt-3 text-[9px] text-muted-foreground">
         Less
         {[0.1, 0.35, 0.6, 0.9].map(a => (
           <span key={a} className="w-3 h-3 rounded" style={{ background: `rgba(129,140,248,${a})` }} />
@@ -77,10 +77,10 @@ function FunnelBars({ data }: { data: { stage: string; count: number }[] }) {
       {data.map((step, i) => (
         <div key={step.stage}>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-white/55">{step.stage}</span>
-            <span className="text-white/80 font-semibold tabular-nums">{step.count}</span>
+            <span className="text-muted-foreground">{step.stage}</span>
+            <span className="text-foreground/85 font-semibold tabular-nums">{step.count}</span>
           </div>
-          <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-foreground/5 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${Math.max((step.count / max) * 100, step.count > 0 ? 4 : 0)}%` }}
@@ -104,7 +104,7 @@ function HBar({ data, nameKey, icon: Icon, title, subtitle, loading, delay }: an
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
           <XAxis type="number" tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
           <YAxis type="category" dataKey={nameKey} tick={{ ...axisTick, fontSize: 10 }} axisLine={false} tickLine={false} width={92} />
-          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
           <Bar dataKey="count" name="Jobs" radius={[0, 6, 6, 0]}>
             {(data ?? []).slice(0, 7).map((_: any, i: number) => (
               <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.85} />
@@ -130,10 +130,10 @@ export default function AdminAnalyticsPage() {
     <div className="w-full space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Platform Analytics</h1>
-          <p className="text-white/40 text-sm mt-0.5">Real database metrics across users, imports, reviews and email delivery</p>
+          <h1 className="text-2xl font-bold text-foreground">Platform Analytics</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Real database metrics across users, imports, reviews and email delivery</p>
         </div>
-        <span className="flex items-center gap-2 text-xs text-white/35 glass border border-white/10 rounded-full px-3 py-1.5">
+        <span className="flex items-center gap-2 text-xs text-muted-foreground glass border border-border rounded-full px-3 py-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           Live · refreshes every 30s
           {dataUpdatedAt ? ` · updated ${new Date(dataUpdatedAt).toLocaleTimeString()}` : ''}
@@ -189,7 +189,7 @@ export default function AdminAnalyticsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="week" tick={axisTick} axisLine={false} tickLine={false} />
               <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="jobs" name="Jobs" fill="#818cf8" fillOpacity={0.85} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -202,7 +202,7 @@ export default function AdminAnalyticsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="month" tick={axisTick} axisLine={false} tickLine={false} />
               <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="jobs" name="Jobs" fill="#c084fc" fillOpacity={0.85} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -218,7 +218,7 @@ export default function AdminAnalyticsPage() {
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.9} />
                 ))}
               </Pie>
-              <Legend formatter={(v) => <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{v}</span>} />
+              <Legend formatter={(v) => <span style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>{v}</span>} />
               <Tooltip content={<ChartTooltip />} />
             </PieChart>
           </ResponsiveContainer>

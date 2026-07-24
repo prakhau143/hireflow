@@ -66,13 +66,13 @@ function Funnel({ data }: { data: { stage: string; count: number }[] }) {
         return (
           <div key={step.stage}>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-white/55">{step.stage}</span>
-              <span className="text-white/80 font-semibold tabular-nums">
+              <span className="text-muted-foreground">{step.stage}</span>
+              <span className="text-foreground font-semibold tabular-nums">
                 {step.count}
-                {conversion != null && <span className="text-white/30 font-normal ml-1.5">({conversion}%)</span>}
+                {conversion != null && <span className="text-muted-foreground/70 font-normal ml-1.5">({conversion}%)</span>}
               </span>
             </div>
-            <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-foreground/5 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.max(pct, step.count > 0 ? 4 : 0)}%` }}
@@ -116,13 +116,13 @@ export default function Dashboard() {
         className="flex flex-wrap items-center justify-between gap-3"
       >
         <div>
-          <h1 className="text-2xl font-bold text-white">Analytics Overview</h1>
-          <p className="text-white/40 text-sm mt-0.5">Live metrics computed from your job hunting data</p>
+          <h1 className="text-2xl font-bold text-foreground">Analytics Overview</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Live metrics computed from your job hunting data</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Date range filter */}
-          <div className="flex items-center gap-1 glass rounded-xl border border-white/10 p-1">
-            <CalendarDays className="w-3.5 h-3.5 text-white/30 ml-1.5" />
+          <div className="flex items-center gap-1 glass rounded-xl border border-border p-1">
+            <CalendarDays className="w-3.5 h-3.5 text-muted-foreground ml-1.5" />
             {RANGES.map(r => (
               <button
                 key={r.days}
@@ -130,8 +130,8 @@ export default function Dashboard() {
                 className={cn(
                   'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all',
                   days === r.days
-                    ? 'bg-indigo-500/25 text-indigo-300 border border-indigo-500/30'
-                    : 'text-white/40 hover:text-white/70 border border-transparent'
+                    ? 'bg-accent/25 text-accent border border-accent/30'
+                    : 'text-muted-foreground hover:text-foreground border border-transparent'
                 )}
               >
                 {r.label}
@@ -142,7 +142,7 @@ export default function Dashboard() {
             <motion.span
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-sm hover:bg-indigo-500/30 transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/20 border border-accent/30 text-accent text-sm hover:bg-accent/30 transition-colors cursor-pointer"
             >
               <Import className="w-4 h-4" /> Import Jobs
             </motion.span>
@@ -215,7 +215,7 @@ export default function Dashboard() {
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.9} />
                 ))}
               </Pie>
-              <Legend formatter={(v) => <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{v}</span>} />
+              <Legend formatter={(v) => <span style={{ color: 'var(--muted-foreground)', fontSize: 11 }}>{v}</span>} />
               <Tooltip content={<ChartTooltip />} />
             </PieChart>
           </ResponsiveContainer>
@@ -234,7 +234,7 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
               <XAxis type="number" tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="skill" tick={{ ...axisTick, fontSize: 10 }} axisLine={false} tickLine={false} width={80} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="count" name="Jobs" radius={[0, 6, 6, 0]}>
                 {(charts?.top_skills ?? []).slice(0, 8).map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.85} />
@@ -262,7 +262,7 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
               <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="value" name="Jobs" radius={[6, 6, 0, 0]}>
                 {(charts?.experience_distribution ?? []).map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.85} />
@@ -285,7 +285,7 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="day" tick={axisTick} axisLine={false} tickLine={false} />
               <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="jobs" name="Jobs added" fill="#818cf8" fillOpacity={0.8} radius={[5, 5, 0, 0]} />
               <Line type="monotone" dataKey="actions" name="Actions" stroke="#34d399" strokeWidth={2} dot={{ r: 2.5, fill: '#34d399' }} />
             </ComposedChart>
@@ -302,7 +302,7 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="range" tick={axisTick} axisLine={false} tickLine={false} />
               <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }} />
               <Bar dataKey="count" name="Resumes" fill="#c084fc" fillOpacity={0.85} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -319,7 +319,7 @@ export default function Dashboard() {
               <XAxis dataKey="month" tick={axisTick} axisLine={false} tickLine={false} />
               <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend formatter={(v) => <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{v}</span>} />
+              <Legend formatter={(v) => <span style={{ color: 'var(--muted-foreground)', fontSize: 10 }}>{v}</span>} />
               {trendSkills.map((skill, i) => (
                 <Line key={skill} type="monotone" dataKey={skill} stroke={CHART_COLORS[i % CHART_COLORS.length]}
                   strokeWidth={2} dot={false} />
@@ -343,8 +343,8 @@ export default function Dashboard() {
               const max = charts?.job_locations?.[0]?.count || 1
               return (
                 <div key={loc.location} className="flex items-center gap-3">
-                  <span className="text-white/55 text-xs w-24 shrink-0 truncate">{loc.location}</span>
-                  <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                  <span className="text-muted-foreground text-xs w-24 shrink-0 truncate">{loc.location}</span>
+                  <div className="flex-1 h-2 bg-foreground/5 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${(loc.count / max) * 100}%` }}
@@ -353,7 +353,7 @@ export default function Dashboard() {
                       style={{ background: CHART_COLORS[i % CHART_COLORS.length], opacity: 0.85 }}
                     />
                   </div>
-                  <span className="text-white/40 text-xs w-6 text-right tabular-nums">{loc.count}</span>
+                  <span className="text-muted-foreground text-xs w-6 text-right tabular-nums">{loc.count}</span>
                 </div>
               )
             })}

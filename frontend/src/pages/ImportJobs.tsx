@@ -221,14 +221,14 @@ export default function ImportJobs() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Import Jobs</h1>
-          <p className="text-white/40 text-sm mt-0.5">
+          <h1 className="text-2xl font-bold text-foreground">Import Jobs</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
             Paste WhatsApp, LinkedIn, or any job text — AI hybrid pipeline extracts and matches jobs
           </p>
         </div>
         {phase === 'review' && (
           <div className="flex gap-2">
-            <button onClick={reset} className="flex items-center gap-2 px-4 py-2 rounded-xl glass border border-white/10 text-sm text-white/60 hover:text-white transition-colors">
+            <button onClick={reset} className="flex items-center gap-2 px-4 py-2 rounded-xl glass border border-border text-sm text-muted-foreground hover:text-foreground transition-colors">
               <Trash2 className="w-4 h-4" /> Reset
             </button>
             <motion.button
@@ -250,7 +250,7 @@ export default function ImportJobs() {
         {/* ── Input phase ──────────────────────────────────────────────────── */}
         {phase === 'input' && (
           <motion.div key="input" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
-            <div className="glass rounded-2xl border border-white/10 p-1">
+            <div className="glass rounded-2xl border border-border p-1">
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -270,19 +270,19 @@ hr@startupco.in | +91 98765 43210
 ─────────────────────────────────
 
 Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
-                className="w-full h-80 bg-transparent rounded-xl px-5 py-4 text-sm text-white/80 placeholder:text-white/20 resize-none outline-none leading-relaxed font-mono"
+                className="w-full h-80 bg-transparent rounded-xl px-5 py-4 text-sm text-foreground/85 placeholder:text-muted-foreground/60 resize-none outline-none leading-relaxed font-mono"
               />
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-xs text-white/30">
+              <p className="text-xs text-muted-foreground">
                 {text.length > 0
                   ? `${text.length.toLocaleString()} chars · Rule Engine + Groq Llama 3.3`
                   : 'Supports WhatsApp exports · LinkedIn · Telegram · plain text'}
               </p>
               <div className="flex gap-2">
                 {text && (
-                  <button onClick={() => setText('')} className="px-4 py-2 rounded-xl glass border border-white/10 text-sm text-white/50 hover:text-white transition-colors">
+                  <button onClick={() => setText('')} className="px-4 py-2 rounded-xl glass border border-border text-sm text-muted-foreground hover:text-foreground transition-colors">
                     Clear
                   </button>
                 )}
@@ -315,13 +315,13 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                 { icon: Sparkles,       label: '3. AI Extract', desc: 'Per-block JSON extraction' },
                 { icon: Save,           label: '4. Save & Track', desc: 'Matched jobs to your board' },
               ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="glass rounded-xl border border-white/10 p-4 flex gap-3">
+                <div key={label} className="glass rounded-xl border border-border p-4 flex gap-3">
                   <div className="w-8 h-8 rounded-lg bg-indigo-600/20 flex items-center justify-center shrink-0">
                     <Icon className="w-4 h-4 text-indigo-400" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-white">{label}</p>
-                    <p className="text-xs text-white/40 mt-0.5">{desc}</p>
+                    <p className="text-xs font-medium text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
                   </div>
                 </div>
               ))}
@@ -332,10 +332,10 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
         {/* ── Parsing phase ─────────────────────────────────────────────────── */}
         {phase === 'parsing' && (
           <motion.div key="parsing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            <div className="glass rounded-2xl border border-white/10 p-8 max-w-lg mx-auto space-y-6">
+            <div className="glass rounded-2xl border border-border p-8 max-w-lg mx-auto space-y-6">
               <div className="text-center space-y-1">
-                <h2 className="text-white font-semibold text-lg">Running Import Pipeline</h2>
-                <p className="text-white/40 text-sm">{text.length.toLocaleString()} chars · please wait…</p>
+                <h2 className="text-foreground font-semibold text-lg">Running Import Pipeline</h2>
+                <p className="text-muted-foreground text-sm">{text.length.toLocaleString()} chars · please wait…</p>
               </div>
 
               <div className="space-y-3">
@@ -346,13 +346,13 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                   return (
                     <div key={stage.id} className={cn('space-y-1 transition-opacity', !isDone && !isActive && 'opacity-30')}>
                       <div className="flex items-center justify-between text-xs">
-                        <span className={cn('font-medium', isDone ? 'text-emerald-400' : isActive ? 'text-white' : 'text-white/50')}>
+                        <span className={cn('font-medium', isDone ? 'text-emerald-400' : isActive ? 'text-foreground' : 'text-muted-foreground')}>
                           {isDone ? '✓ ' : isActive ? '⟳ ' : `${idx + 1}. `}{stage.label}
                         </span>
-                        {isActive && <span className="text-white/30">{stageProgress}%</span>}
+                        {isActive && <span className="text-muted-foreground">{stageProgress}%</span>}
                         {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                       </div>
-                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden">
                         <motion.div
                           className={cn('h-full rounded-full', isDone ? 'bg-emerald-500' : 'bg-indigo-500')}
                           animate={{ width: isDone ? '100%' : isActive ? `${stageProgress}%` : '0%' }}
@@ -360,7 +360,7 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                         />
                       </div>
                       {isActive && stage.hint && (
-                        <p className="text-white/25 text-xs">{stage.hint}</p>
+                        <p className="text-muted-foreground text-xs">{stage.hint}</p>
                       )}
                     </div>
                   )
@@ -376,33 +376,33 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
 
             {/* Parse summary bar */}
             {stats && (
-              <div className="glass rounded-xl border border-white/10 p-4 space-y-3">
+              <div className="glass rounded-xl border border-border p-4 space-y-3">
                 {/* Source + select controls */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-sm">
                     <SourceIcon className="w-4 h-4 text-indigo-400" />
-                    <span className="text-white/70 font-medium">{sourceLabel} Import</span>
-                    <span className="text-white/20">·</span>
-                    <span className="text-white/40 text-xs">Enterprise Validation Pipeline</span>
+                    <span className="text-foreground/80 font-medium">{sourceLabel} Import</span>
+                    <span className="text-muted-foreground/60">·</span>
+                    <span className="text-muted-foreground text-xs">Enterprise Validation Pipeline</span>
                   </div>
-                  <div className="flex gap-3 text-xs text-white/40">
-                    <button onClick={() => setSelected(new Set(parsed.map((_, i) => i)))} className="hover:text-white transition-colors">Select all</button>
-                    <button onClick={() => setSelected(new Set())} className="hover:text-white transition-colors">None</button>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    <button onClick={() => setSelected(new Set(parsed.map((_, i) => i)))} className="hover:text-foreground transition-colors">Select all</button>
+                    <button onClick={() => setSelected(new Set())} className="hover:text-foreground transition-colors">None</button>
                   </div>
                 </div>
                 {/* Pipeline stats row */}
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                   {[
-                    { label: 'Raw Messages', value: stats.raw_lines, color: 'text-white/60', bg: 'bg-white/5' },
+                    { label: 'Raw Messages', value: stats.raw_lines, color: 'text-muted-foreground', bg: 'bg-foreground/5' },
                     { label: 'Noise Removed', value: stats.noise_removed, color: 'text-orange-400', bg: 'bg-orange-500/10' },
                     { label: 'Job Blocks', value: stats.blocks_found, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
                     { label: 'Needs Review', value: stats.needs_review, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
                     { label: 'Rejected', value: stats.rejected, color: 'text-red-400', bg: 'bg-red-500/10' },
                     { label: 'Valid', value: stats.valid, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
                   ].map(({ label, value, color, bg }) => (
-                    <div key={label} className={cn('rounded-lg border border-white/8 px-3 py-2 text-center', bg)}>
+                    <div key={label} className={cn('rounded-lg border border-border px-3 py-2 text-center', bg)}>
                       <p className={cn('text-lg font-bold leading-none', color)}>{value}</p>
-                      <p className="text-[10px] text-white/40 mt-1 leading-tight">{label}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{label}</p>
                     </div>
                   ))}
                 </div>
@@ -410,11 +410,11 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
             )}
 
             {parsed.length === 0 ? (
-              <div className="glass rounded-2xl border border-white/10 p-12 text-center space-y-3">
-                <AlertCircle className="w-12 h-12 text-white/20 mx-auto" />
-                <p className="text-white/60 font-medium">No valid jobs found</p>
-                <p className="text-white/30 text-sm">The pipeline couldn't extract any job postings. Try pasting text that includes job titles and contact emails.</p>
-                <button onClick={reset} className="mt-2 px-4 py-2 rounded-xl glass border border-white/10 text-sm text-white/70 hover:text-white transition-colors">
+              <div className="glass rounded-2xl border border-border p-12 text-center space-y-3">
+                <AlertCircle className="w-12 h-12 text-muted-foreground/60 mx-auto" />
+                <p className="text-muted-foreground font-medium">No valid jobs found</p>
+                <p className="text-muted-foreground text-sm">The pipeline couldn't extract any job postings. Try pasting text that includes job titles and contact emails.</p>
+                <button onClick={reset} className="mt-2 px-4 py-2 rounded-xl glass border border-border text-sm text-foreground/80 hover:text-foreground transition-colors">
                   Try Again
                 </button>
               </div>
@@ -462,7 +462,7 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                             )}
                             <p className="text-red-400/80">{reasonText}</p>
                           </div>
-                          {block._raw && <p className="text-white/25 font-mono truncate pl-0.5">{block._raw.substring(0, 120)}…</p>}
+                          {block._raw && <p className="text-muted-foreground font-mono truncate pl-0.5">{block._raw.substring(0, 120)}…</p>}
                         </div>
                       )
                     })}
@@ -476,11 +476,11 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
         {/* ── Saved phase ───────────────────────────────────────────────────── */}
         {phase === 'saved' && saveResult && (
           <motion.div key="saved" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            <div className="glass rounded-2xl border border-white/10 p-8 max-w-lg mx-auto space-y-6 text-center">
+            <div className="glass rounded-2xl border border-border p-8 max-w-lg mx-auto space-y-6 text-center">
               <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto" />
               <div>
-                <h2 className="text-white font-semibold text-xl">Import Complete</h2>
-                <p className="text-white/40 text-sm mt-1">Jobs have been saved to your board</p>
+                <h2 className="text-foreground font-semibold text-xl">Import Complete</h2>
+                <p className="text-muted-foreground text-sm mt-1">Jobs have been saved to your board</p>
               </div>
 
               {/* Stats grid */}
@@ -534,29 +534,29 @@ function ParsedJobCard({ job, selected, onToggle }: { job: ParsedJob; selected: 
       onClick={onToggle}
       className={cn(
         'glass rounded-2xl border cursor-pointer transition-all p-5 space-y-3',
-        selected ? 'border-indigo-500/40 bg-indigo-500/5 ring-1 ring-indigo-500/20' : 'border-white/10 hover:border-white/20',
+        selected ? 'border-indigo-500/40 bg-indigo-500/5 ring-1 ring-indigo-500/20' : 'border-border hover:border-accent/30',
       )}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-white text-sm">{job.role || 'Unknown Role'}</h3>
+            <h3 className="font-semibold text-foreground text-sm">{job.role || 'Unknown Role'}</h3>
             {job.employment_type && (
-              <span className="px-1.5 py-0.5 rounded text-xs bg-white/5 text-white/40 border border-white/10">{job.employment_type}</span>
+              <span className="px-1.5 py-0.5 rounded text-xs bg-foreground/5 text-muted-foreground border border-border">{job.employment_type}</span>
             )}
             {isNeedsReview && (
               <span className="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/15 text-yellow-400 border border-yellow-500/25">Needs Review</span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5 text-white/50 text-xs flex-wrap">
+          <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground text-xs flex-wrap">
             <Building2 className="w-3 h-3 shrink-0" />
             <span>{job.company || '—'}</span>
-            {job.location && <><span className="text-white/20">·</span><MapPin className="w-3 h-3 shrink-0" /><span>{job.location}</span></>}
-            {job.work_mode && <><span className="text-white/20">·</span><span className={cn(job.work_mode === 'Remote' ? 'text-emerald-400' : job.work_mode === 'Hybrid' ? 'text-yellow-400' : '')}>{job.work_mode}</span></>}
+            {job.location && <><span className="text-muted-foreground/60">·</span><MapPin className="w-3 h-3 shrink-0" /><span>{job.location}</span></>}
+            {job.work_mode && <><span className="text-muted-foreground/60">·</span><span className={cn(job.work_mode === 'Remote' ? 'text-emerald-400' : job.work_mode === 'Hybrid' ? 'text-yellow-400' : '')}>{job.work_mode}</span></>}
           </div>
         </div>
-        <div className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all', selected ? 'border-indigo-500 bg-indigo-500' : 'border-white/20')}>
+        <div className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all', selected ? 'border-indigo-500 bg-indigo-500' : 'border-border')}>
           {selected && <CheckCircle2 className="w-3 h-3 text-white" />}
         </div>
       </div>
@@ -565,50 +565,50 @@ function ParsedJobCard({ job, selected, onToggle }: { job: ParsedJob; selected: 
       <div className="space-y-2">
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-white/40">Resume match</span>
+            <span className="text-muted-foreground">Resume match</span>
             <span className={cn('font-bold', matchColor)}>{score}%</span>
           </div>
-          <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+          <div className="h-1 bg-foreground/5 rounded-full overflow-hidden">
             <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.5 }} className={cn('h-full rounded-full', matchBg)} />
           </div>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-white/30">AI confidence</span>
+          <span className="text-muted-foreground">AI confidence</span>
           <span className={cn('px-1.5 py-0.5 rounded border text-[10px] font-semibold', confColor, confBg)}>{conf}%</span>
         </div>
       </div>
 
       {/* Description */}
-      {job.description && <p className="text-xs text-white/55 line-clamp-2">{job.description}</p>}
+      {job.description && <p className="text-xs text-muted-foreground line-clamp-2">{job.description}</p>}
 
       {/* Skills */}
       {job.skills?.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {job.skills.slice(0, 6).map((s) => (
-            <span key={s} className={cn('px-2 py-0.5 rounded-full text-xs border', job.matched_skills?.includes(s) ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' : 'bg-white/5 text-white/50 border-white/10')}>
+            <span key={s} className={cn('px-2 py-0.5 rounded-full text-xs border', job.matched_skills?.includes(s) ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' : 'bg-foreground/5 text-muted-foreground border-border')}>
               {s}
             </span>
           ))}
-          {job.skills.length > 6 && <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/30 border border-white/10">+{job.skills.length - 6}</span>}
+          {job.skills.length > 6 && <span className="px-2 py-0.5 rounded-full text-xs bg-foreground/5 text-muted-foreground border border-border">+{job.skills.length - 6}</span>}
         </div>
       )}
 
       {/* Contact + meta row */}
-      <div className="flex items-center justify-between text-xs text-white/35 flex-wrap gap-2">
+      <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
         <div className="flex items-center gap-3">
           {job.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{job.email}</span>}
           {job.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{job.phone}</span>}
-          {!job.email && !job.phone && <span className="text-white/20">No contact info</span>}
+          {!job.email && !job.phone && <span className="text-muted-foreground/60">No contact info</span>}
         </div>
         <div className="flex items-center gap-2">
-          {job.salary && <span className="text-white/50">{job.salary}</span>}
+          {job.salary && <span className="text-muted-foreground">{job.salary}</span>}
           {job.experience && <span>{job.experience}</span>}
         </div>
       </div>
 
       {/* Footer: source + apply link */}
-      <div className="flex items-center justify-between pt-1 border-t border-white/5">
-        <span className="text-xs text-white/25 flex items-center gap-1">
+      <div className="flex items-center justify-between pt-1 border-t border-border">
+        <span className="text-xs text-muted-foreground flex items-center gap-1">
           {job._source === 'whatsapp' ? <MessageSquare className="w-3 h-3" /> : job._source === 'linkedin' ? <Link2 className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
           {sourceLabel}
         </span>

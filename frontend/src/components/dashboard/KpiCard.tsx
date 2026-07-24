@@ -50,7 +50,7 @@ export default function KpiCard({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.3 }}
-      className="glass rounded-2xl border border-white/10 p-4 relative overflow-hidden group hover:border-white/20 transition-colors"
+      className="glass rounded-2xl border border-border p-4 relative overflow-hidden group hover:border-accent/30 transition-colors"
     >
       <div className={cn('absolute -top-8 -right-8 w-24 h-24 rounded-full bg-gradient-to-br to-transparent opacity-0 group-hover:opacity-100 transition-opacity blur-2xl', c.glow)} />
       <div className="flex items-center justify-between mb-3">
@@ -61,8 +61,8 @@ export default function KpiCard({
           <span className={cn(
             'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-medium',
             delta.value > 0
-              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-              : 'text-red-400 bg-red-500/10 border-red-500/20'
+              ? 'text-success bg-success/10 border-success/20'
+              : 'text-danger bg-danger/10 border-danger/20'
           )}>
             {delta.value > 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
             {delta.value > 0 ? '+' : ''}{delta.value} {delta.label}
@@ -70,13 +70,13 @@ export default function KpiCard({
         )}
       </div>
       {loading ? (
-        <div className="h-7 w-16 rounded-lg bg-white/5 shimmer mb-1" />
+        <div className="h-7 w-16 rounded-lg bg-foreground/5 shimmer mb-1" />
       ) : (
-        <p className="text-2xl font-bold text-white leading-none mb-1 tabular-nums">
+        <p className="text-2xl font-bold text-foreground leading-none mb-1 tabular-nums">
           {value == null ? '—' : `${displayed.toLocaleString()}${suffix}`}
         </p>
       )}
-      <p className="text-white/40 text-xs">{label}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
     </motion.div>
   )
 }

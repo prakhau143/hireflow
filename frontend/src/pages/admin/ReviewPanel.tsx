@@ -124,14 +124,14 @@ export default function ReviewPanel() {
     <div className="w-full space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-indigo-400" /> Import Review
           </h1>
-          <p className="text-white/40 text-sm mt-0.5">
+          <p className="text-muted-foreground text-sm mt-0.5">
             Imported jobs go live only after approval — review quality, contacts and duplicates here
           </p>
         </div>
-        {isFetching && <RefreshCw className="w-4 h-4 text-white/30 animate-spin" />}
+        {isFetching && <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />}
       </div>
 
       {/* Tabs with live counts */}
@@ -142,11 +142,11 @@ export default function ReviewPanel() {
               'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all',
               tab === t.id
                 ? 'bg-indigo-500/25 text-indigo-300 border-indigo-500/40'
-                : 'glass text-white/45 border-white/10 hover:text-white/80 hover:border-white/25'
+                : 'glass text-muted-foreground border-border hover:text-foreground/85 hover:border-accent/30'
             )}>
             {t.label}
             <span className={cn('px-1.5 py-0.5 rounded-full text-[10px] font-bold',
-              tab === t.id ? 'bg-indigo-500/30 text-indigo-200' : 'bg-white/8 text-white/40')}>
+              tab === t.id ? 'bg-indigo-500/30 text-indigo-200' : 'bg-foreground/5 text-muted-foreground')}>
               {counts[t.id] ?? 0}
             </span>
           </button>
@@ -156,16 +156,16 @@ export default function ReviewPanel() {
       {/* Search + filters */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="w-4 h-4 text-white/25 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
           <input value={q} onChange={e => { setQ(e.target.value); setOffset(0) }}
             placeholder="Search title or company…"
-            className="w-full glass rounded-xl pl-9 pr-3 py-2.5 text-sm text-white/80 placeholder:text-white/25 border border-white/10 focus:border-indigo-500/40 focus:outline-none" />
+            className="w-full glass rounded-xl pl-9 pr-3 py-2.5 text-sm text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none" />
         </div>
         <select value={appType} onChange={e => { setAppType(e.target.value); setOffset(0) }}
-          className="glass rounded-xl px-3 py-2.5 text-sm text-white/60 border border-white/10 focus:border-indigo-500/40 focus:outline-none">
-          <option value="" className="bg-[#0f1829]">All apply types</option>
+          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+          <option value="" className="bg-card">All apply types</option>
           {['email', 'google_form', 'linkedin', 'portal', 'phone', 'none'].map(t => (
-            <option key={t} value={t} className="bg-[#0f1829]">{t.replace('_', ' ')}</option>
+            <option key={t} value={t} className="bg-card">{t.replace('_', ' ')}</option>
           ))}
         </select>
       </div>
@@ -175,7 +175,7 @@ export default function ReviewPanel() {
         {selected.size > 0 && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             className="glass rounded-xl border border-indigo-500/30 px-4 py-2.5 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-white/70 font-medium mr-2">{selected.size} selected</span>
+            <span className="text-sm text-foreground/80 font-medium mr-2">{selected.size} selected</span>
             <button onClick={() => bulkMutation.mutate({ ids: [...selected], action: 'approve' })}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium">
               <CheckCircle className="w-3 h-3" /> Approve
@@ -190,17 +190,17 @@ export default function ReviewPanel() {
               <GitMerge className="w-3 h-3" /> Merge into one
             </button>
             <button onClick={() => { if (confirm(`Delete ${selected.size} job(s) permanently?`)) bulkMutation.mutate({ ids: [...selected], action: 'delete' }) }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-white/10 text-white/40 text-xs hover:text-red-400 hover:border-red-500/25">
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-muted-foreground text-xs hover:text-red-400 hover:border-red-500/25">
               <Trash2 className="w-3 h-3" /> Delete
             </button>
-            <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-white/35 hover:text-white/70">Clear</button>
+            <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-muted-foreground hover:text-foreground/80">Clear</button>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Job list */}
-      <div className="glass rounded-2xl border border-white/10 overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/8 text-[11px] text-white/30 uppercase tracking-wider">
+      <div className="glass rounded-2xl border border-border overflow-hidden">
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border text-[11px] text-muted-foreground uppercase tracking-wider">
           <input type="checkbox" checked={allChecked} onChange={toggleAll} className="accent-indigo-500" />
           <span className="flex-1">Job</span>
           <span className="w-20 text-center">Confidence</span>
@@ -210,26 +210,26 @@ export default function ReviewPanel() {
         </div>
 
         {isLoading ? (
-          <div className="p-10 text-center text-white/30 text-sm">Loading review queue…</div>
+          <div className="p-10 text-center text-muted-foreground text-sm">Loading review queue…</div>
         ) : items.length === 0 ? (
-          <div className="p-12 text-center text-white/25 text-sm">
-            <ShieldCheck className="w-9 h-9 mx-auto mb-3 text-white/15" />
+          <div className="p-12 text-center text-muted-foreground text-sm">
+            <ShieldCheck className="w-9 h-9 mx-auto mb-3 text-muted-foreground/50" />
             Nothing in “{TABS.find(t => t.id === tab)?.label}”
           </div>
         ) : (
           <div className="divide-y divide-white/5">
             {items.map((j, i) => (
               <motion.div key={j.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
-                <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02]">
+                <div className="flex items-center gap-3 px-4 py-3 hover:bg-foreground/[0.02]">
                   <input type="checkbox" checked={selected.has(j.id)} onChange={() => toggle(j.id)} className="accent-indigo-500" />
                   <button onClick={() => setExpanded(expanded === j.id ? null : j.id)} className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
-                      <p className="text-white/85 text-sm font-medium truncate">{j.title}</p>
-                      <span className="text-white/30 text-xs truncate">· {j.company}</span>
-                      <ChevronDown className={cn('w-3 h-3 text-white/25 shrink-0 transition-transform', expanded === j.id && 'rotate-180')} />
+                      <p className="text-foreground/85 text-sm font-medium truncate">{j.title}</p>
+                      <span className="text-muted-foreground text-xs truncate">· {j.company}</span>
+                      <ChevronDown className={cn('w-3 h-3 text-muted-foreground shrink-0 transition-transform', expanded === j.id && 'rotate-180')} />
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                      {j.location && <span className="text-[10px] text-white/35">{j.location}</span>}
+                      {j.location && <span className="text-[10px] text-muted-foreground">{j.location}</span>}
                       {j.missing_fields.map(f => (
                         <span key={f} className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400/90 border border-amber-500/20">
                           no {f}
@@ -241,7 +241,7 @@ export default function ReviewPanel() {
                         </span>
                       )}
                       {j.validation_warnings.map((w, wi) => (
-                        <span key={wi} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-white/40 border border-white/10 truncate max-w-[220px]">
+                        <span key={wi} className="text-[9px] px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground border border-border truncate max-w-[220px]">
                           <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5 text-amber-400/70" />{w}
                         </span>
                       ))}
@@ -250,7 +250,7 @@ export default function ReviewPanel() {
                   <span className={cn('w-20 text-center text-sm font-bold tabular-nums', confColor(j.confidence_score))}>
                     {j.confidence_score ?? '—'}%
                   </span>
-                  <span className="w-16 text-center text-sm text-white/60 tabular-nums">{Math.round(j.match_score ?? 0)}%</span>
+                  <span className="w-16 text-center text-sm text-muted-foreground tabular-nums">{Math.round(j.match_score ?? 0)}%</span>
                   <span className="w-24 text-center hidden md:block">
                     {j.application_type && (
                       <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full border', APP_TYPE_STYLE[j.application_type] ?? '')}>
@@ -272,7 +272,7 @@ export default function ReviewPanel() {
                       </>
                     )}
                     <button title="Edit" onClick={() => setEditing({ ...j })}
-                      className="p-1.5 rounded-lg text-white/35 hover:text-white/80 hover:bg-white/5">
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground/85 hover:bg-foreground/5">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -282,14 +282,14 @@ export default function ReviewPanel() {
                 <AnimatePresence>
                   {expanded === j.id && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden bg-white/[0.015] border-t border-white/5">
+                      className="overflow-hidden bg-foreground/[0.015] border-t border-border">
                       <div className="px-11 py-3 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1.5 text-xs">
-                        <p className="text-white/50"><span className="text-white/25">Contact:</span> {j.contact_email || j.contact_phone || '—'}</p>
-                        <p className="text-white/50 truncate"><span className="text-white/25">Apply link:</span> {j.apply_link || '—'}</p>
-                        <p className="text-white/50"><span className="text-white/25">Experience:</span> {j.experience_min}–{j.experience_max} yrs · <span className="text-white/25">Salary:</span> {j.salary || '—'}</p>
-                        <p className="text-white/50"><span className="text-white/25">Session:</span> {j.import_session_id?.slice(0, 8) || 'manual'} · <span className="text-white/25">Source:</span> {j.source || '—'}</p>
-                        <p className="text-white/50 md:col-span-2"><span className="text-white/25">Skills:</span> {j.skills.join(', ') || '—'}</p>
-                        {j.description && <p className="text-white/40 md:col-span-2 leading-relaxed">{j.description}</p>}
+                        <p className="text-muted-foreground"><span className="text-muted-foreground">Contact:</span> {j.contact_email || j.contact_phone || '—'}</p>
+                        <p className="text-muted-foreground truncate"><span className="text-muted-foreground">Apply link:</span> {j.apply_link || '—'}</p>
+                        <p className="text-muted-foreground"><span className="text-muted-foreground">Experience:</span> {j.experience_min}–{j.experience_max} yrs · <span className="text-muted-foreground">Salary:</span> {j.salary || '—'}</p>
+                        <p className="text-muted-foreground"><span className="text-muted-foreground">Session:</span> {j.import_session_id?.slice(0, 8) || 'manual'} · <span className="text-muted-foreground">Source:</span> {j.source || '—'}</p>
+                        <p className="text-muted-foreground md:col-span-2"><span className="text-muted-foreground">Skills:</span> {j.skills.join(', ') || '—'}</p>
+                        {j.description && <p className="text-muted-foreground md:col-span-2 leading-relaxed">{j.description}</p>}
                       </div>
                     </motion.div>
                   )}
@@ -301,15 +301,15 @@ export default function ReviewPanel() {
 
         {/* Pagination */}
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/8 text-xs text-white/40">
+          <div className="flex items-center justify-between px-4 py-2.5 border-t border-border text-xs text-muted-foreground">
             <span>{total} jobs · page {page} of {pages}</span>
             <div className="flex gap-1">
               <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                className="p-1.5 rounded-lg border border-white/10 hover:border-white/25 disabled:opacity-30">
+                className="p-1.5 rounded-lg border border-border hover:border-accent/30 disabled:opacity-30">
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
               <button disabled={offset + PAGE_SIZE >= total} onClick={() => setOffset(offset + PAGE_SIZE)}
-                className="p-1.5 rounded-lg border border-white/10 hover:border-white/25 disabled:opacity-30">
+                className="p-1.5 rounded-lg border border-border hover:border-accent/30 disabled:opacity-30">
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -325,20 +325,20 @@ export default function ReviewPanel() {
             style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)' }}
             onClick={() => setEditing(null)}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="glass rounded-2xl border border-white/15 w-full max-w-lg p-5 space-y-3"
+              className="glass rounded-2xl border border-border w-full max-w-lg p-5 space-y-3"
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
-                <h3 className="text-white font-semibold text-sm">Edit Job</h3>
-                <button onClick={() => setEditing(null)} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+                <h3 className="text-foreground font-semibold text-sm">Edit Job</h3>
+                <button onClick={() => setEditing(null)} className="p-1 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
               </div>
               {([['title', 'Title'], ['company', 'Company'], ['location', 'Location'],
                  ['contact_email', 'Contact Email'], ['apply_link', 'Apply Link'], ['salary', 'Salary']] as const
               ).map(([key, label]) => (
                 <div key={key} className="space-y-1">
-                  <label className="text-[10px] text-white/40 uppercase tracking-wider">{label}</label>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</label>
                   <input value={(editing as any)[key] ?? ''}
                     onChange={e => setEditing({ ...editing, [key]: e.target.value })}
-                    className="w-full glass rounded-lg px-3 py-2 text-sm text-white/80 border border-white/10 focus:border-indigo-500/40 focus:outline-none" />
+                    className="w-full glass rounded-lg px-3 py-2 text-sm text-foreground/85 border border-border focus:border-indigo-500/40 focus:outline-none" />
                 </div>
               ))}
               <button onClick={() => editMutation.mutate(editing)} disabled={editMutation.isPending}

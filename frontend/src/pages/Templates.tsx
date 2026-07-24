@@ -110,8 +110,8 @@ export default function Templates() {
     <div className="w-full space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Email Template Library</h1>
-          <p className="text-white/40 text-sm mt-0.5">
+          <h1 className="text-2xl font-bold text-foreground">Email Template Library</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
             AI-dynamic templates with {'{{variables}}'} — the Application Agent picks and personalizes them per job
           </p>
         </div>
@@ -129,7 +129,7 @@ export default function Templates() {
               'px-3 py-1.5 rounded-full text-xs border transition-all',
               category === c
                 ? 'bg-indigo-500/25 text-indigo-300 border-indigo-500/40'
-                : 'glass text-white/45 border-white/10 hover:text-white/80 hover:border-white/25'
+                : 'glass text-muted-foreground border-border hover:text-foreground/85 hover:border-accent/30'
             )}>
             {c}
           </button>
@@ -150,20 +150,20 @@ export default function Templates() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 onClick={() => { setIsNew(false); setEditing({ ...t, attachments: { ...(t.attachments ?? {}) } }) }}
-                className="glass rounded-2xl border border-white/10 p-4 text-left hover:border-indigo-500/40 transition-all group"
+                className="glass rounded-2xl border border-border p-4 text-left hover:border-indigo-500/40 transition-all group"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-white font-semibold text-sm group-hover:text-indigo-300 transition-colors truncate">{t.name}</h3>
+                  <h3 className="text-foreground font-semibold text-sm group-hover:text-indigo-300 transition-colors truncate">{t.name}</h3>
                   <div className="flex shrink-0">
                     {[...Array(5)].map((_, s) => (
-                      <Star key={s} className={cn('w-3 h-3', s < stars(t) ? 'text-yellow-400 fill-yellow-400' : 'text-white/15')} />
+                      <Star key={s} className={cn('w-3 h-3', s < stars(t) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/50')} />
                     ))}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 mb-3">
                   <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', catColor(t.category))}>{t.category}</span>
                   {t.is_default && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full border bg-white/5 text-white/40 border-white/15">Default</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border bg-foreground/5 text-muted-foreground border-border">Default</span>
                   )}
                   {t.ai_personalization && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full border bg-purple-500/10 text-purple-400 border-purple-500/25 flex items-center gap-1">
@@ -171,10 +171,10 @@ export default function Templates() {
                     </span>
                   )}
                 </div>
-                <p className="text-white/35 text-xs line-clamp-2 mb-3 whitespace-pre-line">{t.body}</p>
-                <div className="flex items-center justify-between text-[11px] text-white/40 border-t border-white/5 pt-2">
-                  <span>Used <span className="text-white/70 font-medium">{t.times_used ?? 0}</span> times</span>
-                  <span>Success <span className={cn('font-medium', rate == null ? 'text-white/30' : rate >= 50 ? 'text-emerald-400' : 'text-yellow-400')}>
+                <p className="text-muted-foreground text-xs line-clamp-2 mb-3 whitespace-pre-line">{t.body}</p>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border pt-2">
+                  <span>Used <span className="text-foreground/80 font-medium">{t.times_used ?? 0}</span> times</span>
+                  <span>Success <span className={cn('font-medium', rate == null ? 'text-muted-foreground' : rate >= 50 ? 'text-emerald-400' : 'text-yellow-400')}>
                     {rate == null ? '—' : `${rate}%`}
                   </span></span>
                 </div>
@@ -182,8 +182,8 @@ export default function Templates() {
             )
           })}
           {filtered.length === 0 && (
-            <div className="col-span-full text-center py-16 text-white/25 text-sm">
-              <FileCode2 className="w-10 h-10 mx-auto mb-3 text-white/15" />
+            <div className="col-span-full text-center py-16 text-muted-foreground text-sm">
+              <FileCode2 className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
               No templates in this category yet
             </div>
           )}
@@ -201,12 +201,12 @@ export default function Templates() {
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="glass rounded-2xl border border-white/15 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+              className="glass rounded-2xl border border-border w-full max-w-3xl max-h-[90vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}
             >
-              <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-white/10 bg-[#0d1424]/90 backdrop-blur-xl">
-                <h3 className="text-white font-semibold text-sm">{isNew ? 'New Template' : 'Edit Template'}</h3>
-                <button onClick={() => setEditing(null)} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5">
+              <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-border bg-card/90 backdrop-blur-xl">
+                <h3 className="text-foreground font-semibold text-sm">{isNew ? 'New Template' : 'Edit Template'}</h3>
+                <button onClick={() => setEditing(null)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -214,34 +214,34 @@ export default function Templates() {
               <div className="p-5 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs text-white/40 uppercase tracking-wider">Name</label>
+                    <label className="text-xs text-muted-foreground uppercase tracking-wider">Name</label>
                     <input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })}
-                      className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/80 border border-white/10 focus:border-indigo-500/40 focus:outline-none" />
+                      className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/85 border border-border focus:border-indigo-500/40 focus:outline-none" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs text-white/40 uppercase tracking-wider">Category</label>
+                    <label className="text-xs text-muted-foreground uppercase tracking-wider">Category</label>
                     <select value={editing.category} onChange={e => setEditing({ ...editing, category: e.target.value })}
-                      className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/70 border border-white/10 focus:border-indigo-500/40 focus:outline-none">
-                      {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c} className="bg-[#0f1829]">{c}</option>)}
+                      className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/80 border border-border focus:border-indigo-500/40 focus:outline-none">
+                      {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c} className="bg-card">{c}</option>)}
                     </select>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs text-white/40 uppercase tracking-wider">Subject</label>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider">Subject</label>
                   <input value={editing.subject} onChange={e => setEditing({ ...editing, subject: e.target.value })}
-                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/80 border border-white/10 focus:border-indigo-500/40 focus:outline-none font-mono" />
+                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/85 border border-border focus:border-indigo-500/40 focus:outline-none font-mono" />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs text-white/40 uppercase tracking-wider">Body</label>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider">Body</label>
                   <textarea value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} rows={9}
-                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/80 border border-white/10 focus:border-indigo-500/40 focus:outline-none font-mono leading-relaxed resize-y" />
+                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/85 border border-border focus:border-indigo-500/40 focus:outline-none font-mono leading-relaxed resize-y" />
                 </div>
 
                 {/* Variable palette */}
                 <div>
-                  <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Variables — click to insert</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Variables — click to insert</p>
                   <div className="flex flex-wrap gap-1.5">
                     {VARIABLES.map(v => (
                       <button key={v}
@@ -261,21 +261,21 @@ export default function Templates() {
                       'flex items-center justify-between px-4 py-3 rounded-xl border transition-all',
                       editing.ai_personalization
                         ? 'bg-purple-500/15 border-purple-500/30'
-                        : 'glass border-white/10'
+                        : 'glass border-border'
                     )}>
-                    <span className="flex items-center gap-2 text-sm text-white/80">
-                      <Sparkles className={cn('w-4 h-4', editing.ai_personalization ? 'text-purple-400' : 'text-white/30')} />
+                    <span className="flex items-center gap-2 text-sm text-foreground/85">
+                      <Sparkles className={cn('w-4 h-4', editing.ai_personalization ? 'text-purple-400' : 'text-muted-foreground')} />
                       AI Personalization
                     </span>
-                    <span className={cn('text-xs font-bold', editing.ai_personalization ? 'text-purple-400' : 'text-white/30')}>
+                    <span className={cn('text-xs font-bold', editing.ai_personalization ? 'text-purple-400' : 'text-muted-foreground')}>
                       {editing.ai_personalization ? 'ON' : 'OFF'}
                     </span>
                   </button>
-                  <div className="glass rounded-xl border border-white/10 px-4 py-3">
-                    <p className="text-xs text-white/40 mb-2 flex items-center gap-1.5"><Paperclip className="w-3 h-3" /> Attachment Rules</p>
+                  <div className="glass rounded-xl border border-border px-4 py-3">
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5"><Paperclip className="w-3 h-3" /> Attachment Rules</p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                       {ATTACH_KEYS.map(k => (
-                        <label key={k} className="flex items-center gap-1.5 text-xs text-white/60 cursor-pointer">
+                        <label key={k} className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                           <input type="checkbox"
                             checked={editing.attachments?.[k] ?? false}
                             onChange={e => setEditing({ ...editing, attachments: { ...(editing.attachments ?? {}), [k]: e.target.checked } })}
@@ -301,7 +301,7 @@ export default function Templates() {
                       <Trash2 className="w-4 h-4" /> Delete
                     </button>
                   )}
-                  <p className="ml-auto text-[11px] text-white/25">AI only rewrites the body — subject & signature stay yours</p>
+                  <p className="ml-auto text-[11px] text-muted-foreground">AI only rewrites the body — subject & signature stay yours</p>
                 </div>
               </div>
             </motion.div>

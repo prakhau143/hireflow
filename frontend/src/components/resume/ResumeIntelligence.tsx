@@ -36,7 +36,7 @@ interface Comparison {
 }
 
 function heatColor(v: number | null) {
-  if (v == null) return 'rgba(255,255,255,0.03)'
+  if (v == null) return 'color-mix(in srgb, var(--foreground) 3%, transparent)'
   const alpha = 0.12 + 0.7 * (v / 100)
   return v >= 75 ? `rgba(52,211,153,${alpha})` : v >= 50 ? `rgba(251,191,36,${alpha})` : `rgba(248,113,113,${alpha})`
 }
@@ -66,10 +66,10 @@ export default function ResumeIntelligence() {
           <Brain className="w-4 h-4 text-purple-400" />
         </div>
         <div>
-          <h2 className="text-white font-semibold">Resume Intelligence</h2>
-          <p className="text-white/35 text-xs">AI section scores, trends and version comparison across your {versions.length} resume{versions.length !== 1 ? 's' : ''}</p>
+          <h2 className="text-foreground font-semibold">Resume Intelligence</h2>
+          <p className="text-muted-foreground text-xs">AI section scores, trends and version comparison across your {versions.length} resume{versions.length !== 1 ? 's' : ''}</p>
         </div>
-        {data && <span className="ml-auto text-xs text-white/40">Avg ATS <span className="text-white font-bold">{data.avg_ats}</span></span>}
+        {data && <span className="ml-auto text-xs text-muted-foreground">Avg ATS <span className="text-foreground font-bold">{data.avg_ats}</span></span>}
       </div>
 
       {/* Row: trend + heatmap */}
@@ -97,14 +97,14 @@ export default function ResumeIntelligence() {
                 style={{ gridTemplateColumns: `110px repeat(${data.heatmap.sections.length}, 1fr)` }}>
                 <span />
                 {data.heatmap.sections.map(s => (
-                  <span key={s} className="text-[8px] text-white/35 text-center leading-tight">{s}</span>
+                  <span key={s} className="text-[8px] text-muted-foreground text-center leading-tight">{s}</span>
                 ))}
                 {data.heatmap.rows.map((row, ri) => (
                   [
-                    <span key={`n${ri}`} className="text-[10px] text-white/50 truncate leading-7 pr-1">{row.resume}</span>,
+                    <span key={`n${ri}`} className="text-[10px] text-muted-foreground truncate leading-7 pr-1">{row.resume}</span>,
                     ...row.scores.map((v, ci) => (
                       <div key={`${ri}-${ci}`} title={`${row.resume} · ${data.heatmap!.sections[ci]}: ${v ?? 'not analyzed'}`}
-                        className="h-7 rounded-md border border-white/5 flex items-center justify-center text-[9px] font-semibold text-white/70"
+                        className="h-7 rounded-md border border-border flex items-center justify-center text-[9px] font-semibold text-foreground/80"
                         style={{ background: heatColor(v) }}>
                         {v ?? ''}
                       </div>
@@ -131,8 +131,8 @@ export default function ResumeIntelligence() {
                   {g.importance}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-xs text-white/75 font-medium">{g.skill}</p>
-                  {g.reason && <p className="text-[10px] text-white/35 leading-snug">{g.reason}</p>}
+                  <p className="text-xs text-foreground/80 font-medium">{g.skill}</p>
+                  {g.reason && <p className="text-[10px] text-muted-foreground leading-snug">{g.reason}</p>}
                 </div>
               </div>
             ))}
@@ -146,10 +146,10 @@ export default function ResumeIntelligence() {
             {(data?.role_recommendations ?? []).slice(0, 4).map(r => (
               <div key={r.role}>
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-white/70 font-medium">{r.role}</span>
-                  <span className={cn('font-bold', r.match >= 80 ? 'text-emerald-400' : r.match >= 60 ? 'text-yellow-400' : 'text-white/40')}>{r.match}%</span>
+                  <span className="text-foreground/80 font-medium">{r.role}</span>
+                  <span className={cn('font-bold', r.match >= 80 ? 'text-emerald-400' : r.match >= 60 ? 'text-yellow-400' : 'text-muted-foreground')}>{r.match}%</span>
                 </div>
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden">
                   <motion.div initial={{ width: 0 }} animate={{ width: `${r.match}%` }} transition={{ duration: 0.5 }}
                     className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500" />
                 </div>
@@ -163,12 +163,12 @@ export default function ResumeIntelligence() {
           <div className="space-y-1.5 pt-1">
             {(data?.top_jobs ?? []).map(j => (
               <Link key={j.id} to={`/jobs/${j.id}`}
-                className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-white/[0.04] transition-colors group">
+                className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-foreground/[0.04] transition-colors group">
                 <div className="min-w-0">
-                  <p className="text-xs text-white/75 truncate group-hover:text-indigo-300">{j.title}</p>
-                  <p className="text-[10px] text-white/30 truncate">{j.company}{j.match_tier ? ` · ${j.match_tier}` : ''}</p>
+                  <p className="text-xs text-foreground/80 truncate group-hover:text-indigo-300">{j.title}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{j.company}{j.match_tier ? ` · ${j.match_tier}` : ''}</p>
                 </div>
-                <span className={cn('shrink-0 text-xs font-bold', j.match_score >= 80 ? 'text-emerald-400' : j.match_score >= 60 ? 'text-yellow-400' : 'text-white/40')}>
+                <span className={cn('shrink-0 text-xs font-bold', j.match_score >= 80 ? 'text-emerald-400' : j.match_score >= 60 ? 'text-yellow-400' : 'text-muted-foreground')}>
                   {j.match_score}%
                 </span>
               </Link>
@@ -179,17 +179,17 @@ export default function ResumeIntelligence() {
 
       {/* Compare */}
       {versions.length >= 2 && (
-        <div className="glass rounded-2xl border border-white/10 p-5 space-y-4">
+        <div className="glass rounded-2xl border border-border p-5 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+            <h3 className="text-foreground font-semibold text-sm flex items-center gap-2">
               <GitCompare className="w-4 h-4 text-indigo-400" /> Compare Versions
             </h3>
             {[['A', cmpA, setCmpA], ['B', cmpB, setCmpB]].map(([label, val, set]: any) => (
               <select key={label} value={val} onChange={e => set(e.target.value)}
-                className="glass rounded-lg px-2.5 py-1.5 text-xs text-white/60 border border-white/10 focus:border-indigo-500/40 focus:outline-none">
-                <option value="" className="bg-[#0f1829]">Resume {label}…</option>
+                className="glass rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+                <option value="" className="bg-card">Resume {label}…</option>
                 {versions.map(v => (
-                  <option key={v.id} value={v.id} className="bg-[#0f1829]">{v.name} (ATS {v.ats_score})</option>
+                  <option key={v.id} value={v.id} className="bg-card">{v.name} (ATS {v.ats_score})</option>
                 ))}
               </select>
             ))}
@@ -199,27 +199,27 @@ export default function ResumeIntelligence() {
             <div className="space-y-3">
               <p className="text-xs text-emerald-300 bg-emerald-500/8 border border-emerald-500/20 rounded-lg p-2.5">🏆 {cmp.verdict}</p>
               <div className="grid grid-cols-[1fr_60px_60px] gap-x-3 gap-y-1.5 text-xs max-w-md">
-                <span className="text-white/30" /><span className="text-white/50 text-center truncate">{cmp.a.name.slice(0, 10)}</span><span className="text-white/50 text-center truncate">{cmp.b.name.slice(0, 10)}</span>
-                <span className="text-white/60 font-medium">Overall ATS</span>
-                <span className={cn('text-center font-bold', cmp.a.ats_score >= cmp.b.ats_score ? 'text-emerald-400' : 'text-white/50')}>{cmp.a.ats_score}</span>
-                <span className={cn('text-center font-bold', cmp.b.ats_score >= cmp.a.ats_score ? 'text-emerald-400' : 'text-white/50')}>{cmp.b.ats_score}</span>
+                <span className="text-muted-foreground" /><span className="text-muted-foreground text-center truncate">{cmp.a.name.slice(0, 10)}</span><span className="text-muted-foreground text-center truncate">{cmp.b.name.slice(0, 10)}</span>
+                <span className="text-muted-foreground font-medium">Overall ATS</span>
+                <span className={cn('text-center font-bold', cmp.a.ats_score >= cmp.b.ats_score ? 'text-emerald-400' : 'text-muted-foreground')}>{cmp.a.ats_score}</span>
+                <span className={cn('text-center font-bold', cmp.b.ats_score >= cmp.a.ats_score ? 'text-emerald-400' : 'text-muted-foreground')}>{cmp.b.ats_score}</span>
                 {cmp.sections.map(s => (
                   [
-                    <span key={s.label} className="text-white/45">{s.label}</span>,
-                    <span key={s.label + 'a'} className={cn('text-center', s.a != null && s.b != null && s.a >= s.b ? 'text-emerald-400' : 'text-white/45')}>{s.a ?? '—'}</span>,
-                    <span key={s.label + 'b'} className={cn('text-center', s.a != null && s.b != null && s.b >= s.a ? 'text-emerald-400' : 'text-white/45')}>{s.b ?? '—'}</span>,
+                    <span key={s.label} className="text-muted-foreground">{s.label}</span>,
+                    <span key={s.label + 'a'} className={cn('text-center', s.a != null && s.b != null && s.a >= s.b ? 'text-emerald-400' : 'text-muted-foreground')}>{s.a ?? '—'}</span>,
+                    <span key={s.label + 'b'} className={cn('text-center', s.a != null && s.b != null && s.b >= s.a ? 'text-emerald-400' : 'text-muted-foreground')}>{s.b ?? '—'}</span>,
                   ]
                 ))}
               </div>
               {(cmp.only_a.length > 0 || cmp.only_b.length > 0) && (
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-[10px]">
                   {cmp.only_a.length > 0 && (
-                    <span className="text-white/40">Only in A: {cmp.only_a.map(s => (
+                    <span className="text-muted-foreground">Only in A: {cmp.only_a.map(s => (
                       <span key={s} className="ml-1 px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">{s}</span>
                     ))}</span>
                   )}
                   {cmp.only_b.length > 0 && (
-                    <span className="text-white/40">Only in B: {cmp.only_b.map(s => (
+                    <span className="text-muted-foreground">Only in B: {cmp.only_b.map(s => (
                       <span key={s} className="ml-1 px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-300">{s}</span>
                     ))}</span>
                   )}
@@ -232,13 +232,13 @@ export default function ResumeIntelligence() {
 
       {/* AI suggestions strip */}
       {(data?.suggestions?.length ?? 0) > 0 && (
-        <div className="glass rounded-2xl border border-white/10 p-5">
-          <h3 className="text-white font-semibold text-sm flex items-center gap-2 mb-3">
+        <div className="glass rounded-2xl border border-border p-5">
+          <h3 className="text-foreground font-semibold text-sm flex items-center gap-2 mb-3">
             <Lightbulb className="w-4 h-4 text-yellow-400" /> AI Improvement Suggestions
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {data!.suggestions.slice(0, 6).map((s, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs text-white/55 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+              <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground p-2 rounded-lg bg-foreground/[0.02] border border-border">
                 <span className="text-yellow-400/80 shrink-0">{i + 1}.</span>{s}
               </div>
             ))}

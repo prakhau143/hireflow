@@ -24,24 +24,24 @@ export default function Navbar() {
   return (
     <nav className={cn(
       'fixed top-0 left-0 right-0 z-50 h-16',
-      'glass border-b border-white/10'
+      'glass border-b border-border'
     )}>
       <div className="flex items-center h-full px-6 gap-4">
         {/* Logo */}
         <Link to="/" className="shrink-0">
-          <Logo size={32} />
+          <Logo size={32} theme={theme === 'light' ? 'light' : 'dark'} />
         </Link>
 
         {/* Global Search */}
         <div className="flex-1 max-w-2xl mx-auto">
           <div className="relative flex items-center gap-2 glass rounded-xl px-3 py-2">
-            <Search className="w-4 h-4 text-white/40 shrink-0" />
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
 
             {/* Search By Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-1 text-xs text-white/60 hover:text-white/80 transition-colors"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 {searchBy}
                 <ChevronDown className="w-3 h-3" />
@@ -60,8 +60,8 @@ export default function Navbar() {
                         key={cat}
                         onClick={() => { setSearchBy(cat); setShowDropdown(false) }}
                         className={cn(
-                          'w-full text-left px-4 py-2 text-sm transition-colors hover:bg-white/10',
-                          searchBy === cat ? 'text-blue-400' : 'text-white/70'
+                          'w-full text-left px-4 py-2 text-sm transition-colors hover:bg-foreground/5',
+                          searchBy === cat ? 'text-accent' : 'text-muted-foreground'
                         )}
                       >
                         {cat}
@@ -72,21 +72,21 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            <div className="w-px h-4 bg-white/10" />
+            <div className="w-px h-4 bg-border" />
 
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={`Search by ${searchBy.toLowerCase()}...`}
-              className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             />
 
             {searchQuery && (
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full"
+                className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full"
               >
                 Press Enter
               </motion.span>
@@ -100,7 +100,7 @@ export default function Navbar() {
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}
-            className="w-8 h-8 rounded-lg glass flex items-center justify-center text-white/70 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-lg glass flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </motion.button>
@@ -108,23 +108,23 @@ export default function Navbar() {
           {/* Notifications */}
           <motion.button
             whileTap={{ scale: 0.9 }}
-            className="relative w-8 h-8 rounded-lg glass flex items-center justify-center text-white/70 hover:text-white transition-colors"
+            className="relative w-8 h-8 rounded-lg glass flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
           </motion.button>
 
           {/* User Menu */}
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 glass rounded-xl px-3 py-1.5 hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 glass rounded-xl px-3 py-1.5 hover:bg-foreground/5 transition-colors"
             >
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[var(--gradient-1)] to-[var(--gradient-2)] flex items-center justify-center text-xs font-bold text-white">
                 {user?.name?.[0] ?? 'U'}
               </div>
-              <span className="text-sm text-white/80 hidden sm:block">{user?.name ?? 'User'}</span>
-              <ChevronDown className="w-3 h-3 text-white/50" />
+              <span className="text-sm text-foreground hidden sm:block">{user?.name ?? 'User'}</span>
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
             </button>
 
             <AnimatePresence>
@@ -146,16 +146,16 @@ export default function Navbar() {
                       key={label}
                       to={to}
                       onClick={() => setShowUserMenu(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
                     >
                       <Icon className="w-4 h-4" />
                       {label}
                     </Link>
                   ))}
-                  <div className="border-t border-white/10">
+                  <div className="border-t border-border">
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-danger hover:bg-danger/10 transition-colors w-full"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout

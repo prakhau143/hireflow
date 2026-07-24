@@ -11,9 +11,9 @@ import api from '@/lib/api'
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="glass rounded-xl px-3 py-2 border border-white/10 shadow-xl text-sm">
-      <p className="text-white/50 mb-1 text-xs">{label}</p>
-      <p className="text-white font-semibold">
+    <div className="glass rounded-xl px-3 py-2 border border-border shadow-xl text-sm">
+      <p className="text-muted-foreground mb-1 text-xs">{label}</p>
+      <p className="text-foreground font-semibold">
         {payload[0].value}{payload[0].name?.includes('score') ? '%' : ' jobs'}
       </p>
     </div>
@@ -39,8 +39,8 @@ export default function Analytics() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Analytics</h1>
-          <p className="text-white/40 text-sm mt-0.5">Comprehensive insights into your job hunt</p>
+          <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Comprehensive insights into your job hunt</p>
         </div>
         <LoadingCards count={4} />
       </div>
@@ -51,8 +51,8 @@ export default function Analytics() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Analytics</h1>
-          <p className="text-white/40 text-sm mt-0.5">Comprehensive insights into your job hunt</p>
+          <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Comprehensive insights into your job hunt</p>
         </div>
         <EmptyState
           icon={BarChart3}
@@ -72,8 +72,8 @@ export default function Analytics() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Analytics</h1>
-        <p className="text-white/40 text-sm mt-0.5">Comprehensive insights into your job hunt</p>
+        <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">Comprehensive insights into your job hunt</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -82,9 +82,9 @@ export default function Analytics() {
           <ChartCard title="Top Skills in Demand" subtitle="Most required skills across your jobs">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={topSkills} layout="vertical" barSize={16}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
-                <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="skill" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }} axisLine={false} tickLine={false} width={70} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                <XAxis type="number" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="skill" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} width={70} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="count" radius={[0, 6, 6, 0]}>
                   {topSkills.map((_: any, i: number) => (
@@ -101,9 +101,9 @@ export default function Analytics() {
           <ChartCard title="Match Score Distribution" subtitle="How your jobs score against your profile">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={matchDist} barSize={32}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="range" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="range" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                   {matchDist.map((_: any, i: number) => (
@@ -125,7 +125,7 @@ export default function Analytics() {
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} fillOpacity={0.85} />
                   ))}
                 </Pie>
-                <Legend formatter={(v) => <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{v}</span>} />
+                <Legend formatter={(v) => <span style={{ color: 'var(--muted-foreground)', fontSize: 11 }}>{v}</span>} />
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
@@ -137,9 +137,9 @@ export default function Analytics() {
           <ChartCard title="Companies Hiring" subtitle="Most active companies in your job pool">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={companies} barSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="company" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="company" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                   {companies.map((_: any, i: number) => (
@@ -164,7 +164,7 @@ export default function Analytics() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.07 }}
-                  className="glass rounded-xl p-3 border border-white/10 text-center"
+                  className="glass rounded-xl p-3 border border-border text-center"
                 >
                   <div
                     className="h-1.5 rounded-full mb-3 mx-auto"
@@ -174,8 +174,8 @@ export default function Analytics() {
                       opacity: 0.6,
                     }}
                   />
-                  <p className="text-white font-semibold text-lg">{loc.count}</p>
-                  <p className="text-white/40 text-xs">{loc.city ?? loc.location}</p>
+                  <p className="text-foreground font-semibold text-lg">{loc.count}</p>
+                  <p className="text-muted-foreground text-xs">{loc.city ?? loc.location}</p>
                 </motion.div>
               )
             })}
@@ -191,10 +191,10 @@ function ChartCard({ title, subtitle, children }: { title: string; subtitle: str
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-2xl border border-white/10 p-5"
+      className="glass rounded-2xl border border-border p-5"
     >
-      <h3 className="text-white font-semibold text-sm">{title}</h3>
-      <p className="text-white/35 text-xs mb-4 mt-0.5">{subtitle}</p>
+      <h3 className="text-foreground font-semibold text-sm">{title}</h3>
+      <p className="text-muted-foreground text-xs mb-4 mt-0.5">{subtitle}</p>
       {children}
     </motion.div>
   )

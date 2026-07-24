@@ -215,12 +215,12 @@ export default function SearchableMultiSelect({
 
   return (
     <div ref={containerRef} className="relative">
-      <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">{label}</label>
+      <label className="text-xs text-muted-foreground uppercase tracking-wider mb-2 block">{label}</label>
 
       {/* Selected chips and input */}
       <div
         onClick={toggleDropdown}
-        className={`glass rounded-xl border transition-colors cursor-pointer min-h-[48px] p-2 flex flex-wrap gap-2 items-center border-white/10 focus-within:border-indigo-500/50`}
+        className={`glass rounded-xl border transition-colors cursor-pointer min-h-[48px] p-2 flex flex-wrap gap-2 items-center border-border focus-within:border-indigo-500/50`}
       >
         {value.map((item) => (
           <motion.span
@@ -247,13 +247,13 @@ export default function SearchableMultiSelect({
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={value.length === 0 ? placeholder : ''}
-            className="w-full bg-transparent text-sm text-white placeholder:text-white/25 outline-none"
+            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 outline-none"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
 
         <ChevronDown
-          className={`w-4 h-4 text-white/30 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </div>
 
@@ -270,17 +270,17 @@ export default function SearchableMultiSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 w-full mt-2 glass rounded-xl border border-white/10 overflow-hidden max-h-[300px] overflow-y-auto"
+            className="absolute z-50 w-full mt-2 glass rounded-xl border border-border overflow-hidden max-h-[300px] overflow-y-auto"
           >
-            <div className="p-3 border-b border-white/10">
+            <div className="p-3 border-b border-border">
               <div className="flex items-center gap-2 px-3 py-2 glass rounded-lg">
-                <Search className="w-4 h-4 text-white/30" />
+                <Search className="w-4 h-4 text-muted-foreground" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={`Search ${label.toLowerCase()}...`}
-                  className="flex-1 bg-transparent text-sm text-white placeholder:text-white/25 outline-none"
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 outline-none"
                   autoFocus
                 />
               </div>
@@ -291,7 +291,7 @@ export default function SearchableMultiSelect({
               {showCustomItem && (
                 <button
                   onClick={() => addCustomItem(searchQuery.trim())}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors flex items-center gap-2"
                 >
                   <X className="w-4 h-4 text-indigo-400" />
                   Add "{searchQuery.trim()}"
@@ -301,7 +301,7 @@ export default function SearchableMultiSelect({
               {/* Popular items (shown when no search) */}
               {!searchQuery && popularItemsToShow.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs text-white/40 uppercase tracking-wider px-3 py-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider px-3 py-2">
                     Popular
                   </p>
                   <div className="flex flex-wrap gap-2 px-3">
@@ -309,7 +309,7 @@ export default function SearchableMultiSelect({
                       <button
                         key={item}
                         onClick={() => addItem(item)}
-                        className={`px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/70 border border-white/10 transition-colors ${c.hover}`}
+                        className={`px-3 py-1.5 rounded-full text-xs bg-foreground/5 text-muted-foreground border border-border transition-colors ${c.hover}`}
                       >
                         {item}
                       </button>
@@ -325,7 +325,7 @@ export default function SearchableMultiSelect({
                     <button
                       key={item}
                       onClick={() => addItem(item)}
-                      className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors flex items-center justify-between group"
+                      className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors flex items-center justify-between group"
                     >
                       <span>{item}</span>
                       <Check className={`w-4 h-4 opacity-0 group-hover:opacity-100 ${c.check} transition-opacity`} />
@@ -336,7 +336,7 @@ export default function SearchableMultiSelect({
 
               {/* No results */}
               {filteredItems.length === 0 && !showCustomItem && (
-                <div className="px-3 py-8 text-center text-white/30 text-sm">
+                <div className="px-3 py-8 text-center text-muted-foreground text-sm">
                   No results found
                 </div>
               )}

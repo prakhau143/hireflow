@@ -19,7 +19,7 @@ function getIconConfig(action: string) {
   for (const [key, val] of Object.entries(iconMap)) {
     if (action.includes(key)) return val
   }
-  return { icon: Activity, color: 'text-white/40 bg-white/10' }
+  return { icon: Activity, color: 'text-muted-foreground bg-foreground/10' }
 }
 
 export default function ActivityLogs() {
@@ -41,8 +41,8 @@ export default function ActivityLogs() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-white">Activity Logs</h1>
-        <p className="text-white/40 text-sm mt-0.5">Timeline of all your HireFlow activity</p>
+        <h1 className="text-2xl font-bold text-foreground">Activity Logs</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">Timeline of all your HireFlow activity</p>
       </div>
 
       {isLoading ? (
@@ -59,13 +59,13 @@ export default function ActivityLogs() {
         Object.entries(grouped).map(([date, dayLogs]) => (
           <div key={date}>
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-px flex-1 bg-white/5" />
-              <span className="text-xs text-white/30 font-medium px-2">{date}</span>
-              <div className="h-px flex-1 bg-white/5" />
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground font-medium px-2">{date}</span>
+              <div className="h-px flex-1 bg-border" />
             </div>
 
             <div className="relative pl-8">
-              <div className="absolute left-3.5 top-0 bottom-0 w-px bg-white/8" />
+              <div className="absolute left-3.5 top-0 bottom-0 w-px bg-border" />
 
               <div className="space-y-4">
                 {dayLogs.map((log, i) => {
@@ -82,13 +82,13 @@ export default function ActivityLogs() {
                         <Icon className={`w-3.5 h-3.5 ${color.split(' ')[0]}`} />
                       </div>
 
-                      <div className="flex-1 glass rounded-xl border border-white/10 p-4 hover:border-white/20 transition-all">
+                      <div className="flex-1 glass rounded-xl border border-border p-4 hover:border-accent/30 transition-all">
                         <div className="flex items-start justify-between gap-3">
-                          <p className="text-white/80 font-medium text-sm">{log.action}</p>
-                          <span className="text-xs text-white/30 shrink-0">{formatTime(log.created_at)}</span>
+                          <p className="text-foreground/85 font-medium text-sm">{log.action}</p>
+                          <span className="text-xs text-muted-foreground shrink-0">{formatTime(log.created_at)}</span>
                         </div>
                         {log.description && (
-                          <p className="text-white/45 text-xs mt-1.5 leading-relaxed">{log.description}</p>
+                          <p className="text-muted-foreground text-xs mt-1.5 leading-relaxed">{log.description}</p>
                         )}
                       </div>
                     </motion.div>

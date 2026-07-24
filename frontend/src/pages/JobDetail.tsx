@@ -28,20 +28,20 @@ function Section({ title, icon: Icon, iconColor = 'text-indigo-400', badge, chil
   const [open, setOpen] = useState(defaultOpen)
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-2xl border border-white/10 overflow-hidden">
+      className="glass rounded-2xl border border-border overflow-hidden">
       <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/2 transition-colors">
-        <h2 className="text-white font-medium text-sm flex items-center gap-2">
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-foreground/[0.02] transition-colors">
+        <h2 className="text-foreground font-medium text-sm flex items-center gap-2">
           <Icon className={cn('w-4 h-4', iconColor)} />
           {title}
           {badge}
         </h2>
-        {open ? <ChevronUp className="w-4 h-4 text-white/30" /> : <ChevronDown className="w-4 h-4 text-white/30" />}
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
       </button>
       <AnimatePresence>
         {open && (
           <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-            className="overflow-hidden border-t border-white/5">
+            className="overflow-hidden border-t border-border">
             <div className="px-5 py-4">{children}</div>
           </motion.div>
         )}
@@ -56,10 +56,10 @@ function ATSBar({ label, score }: { label: string; score: number }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-white/60">{label}</span>
+        <span className="text-muted-foreground">{label}</span>
         <span className={cn('font-bold', text)}>{score}</span>
       </div>
-      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden">
         <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
           className={cn('h-full rounded-full', color)} />
       </div>
@@ -76,7 +76,7 @@ function CopyButton({ text }: { text: string }) {
   }
   return (
     <button onClick={doCopy}
-      className="flex items-center gap-1 text-xs text-white/40 hover:text-white/70 transition-colors">
+      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground/80 transition-colors">
       {copied ? <CheckCircle className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
       {copied ? 'Copied' : 'Copy'}
     </button>
@@ -169,16 +169,16 @@ export default function JobDetail() {
 
   if (isLoading) return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <Link to="/jobs" className="flex items-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors w-fit">
+      <Link to="/jobs" className="flex items-center gap-2 text-muted-foreground hover:text-foreground/80 text-sm transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" /> Back
       </Link>
-      {[1,2,3,4].map(i => <div key={i} className="glass rounded-2xl border border-white/10 shimmer" style={{ height: i === 1 ? 200 : 120 }} />)}
+      {[1,2,3,4].map(i => <div key={i} className="glass rounded-2xl border border-border shimmer" style={{ height: i === 1 ? 200 : 120 }} />)}
     </div>
   )
 
   if (isError || !job) return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <Link to="/jobs" className="flex items-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors w-fit">
+      <Link to="/jobs" className="flex items-center gap-2 text-muted-foreground hover:text-foreground/80 text-sm transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" /> Back
       </Link>
       <EmptyState icon={Briefcase} title="Job not found" description="This job may have been deleted." />
@@ -199,31 +199,31 @@ export default function JobDetail() {
 
   return (
     <div className="w-full space-y-5">
-      <Link to="/jobs" className="flex items-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors w-fit">
+      <Link to="/jobs" className="flex items-center gap-2 text-muted-foreground hover:text-foreground/80 text-sm transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" /> Back to Jobs
       </Link>
 
       {/* ── Hero Card ── */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="glass rounded-2xl border border-white/10 overflow-hidden">
+        className="glass rounded-2xl border border-border overflow-hidden">
         <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${ringColor}, transparent 70%)` }} />
 
         <div className="p-6 flex items-start justify-between gap-6">
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold text-white">{job.title}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{job.title}</h1>
               <span className={cn('text-xs px-2.5 py-1 rounded-full border font-medium', fit.bg, fit.color)}>
                 {fit.label}
               </span>
               {job.employment_type && (
-                <span className="text-xs px-2.5 py-1 rounded-full glass border border-white/10 text-white/50">
+                <span className="text-xs px-2.5 py-1 rounded-full glass border border-border text-muted-foreground">
                   {job.employment_type}
                 </span>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-sm text-white/50 mb-3">
-              <span className="font-medium text-white/80 flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-3">
+              <span className="font-medium text-foreground/80 flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5" />{job.company}
               </span>
               {job.location && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{job.location}</span>}
@@ -231,7 +231,7 @@ export default function JobDetail() {
                 <span className={cn('text-xs px-2 py-0.5 rounded border',
                   job.location_type === 'remote' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
                   : job.location_type === 'hybrid' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20'
-                  : 'text-white/40 border-white/10'
+                  : 'text-muted-foreground border-border'
                 )}>
                   {job.location_type.charAt(0).toUpperCase() + job.location_type.slice(1)}
                 </span>
@@ -254,7 +254,7 @@ export default function JobDetail() {
 
             <div className="flex flex-wrap gap-2">
               {(job.smart_tags ?? []).map(tag => (
-                <span key={tag} className="text-xs px-2 py-0.5 rounded-full glass border border-white/10 text-white/50">{tag}</span>
+                <span key={tag} className="text-xs px-2 py-0.5 rounded-full glass border border-border text-muted-foreground">{tag}</span>
               ))}
             </div>
           </div>
@@ -263,7 +263,7 @@ export default function JobDetail() {
           <div className="shrink-0 text-center">
             <div className="relative">
               <svg width="88" height="88" viewBox="0 0 88 88">
-                <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+                <circle cx="44" cy="44" r="38" fill="none" stroke="var(--border)" strokeWidth="5" />
                 <circle cx="44" cy="44" r="38" fill="none" stroke={ringColor} strokeWidth="5" strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 38}`}
                   strokeDashoffset={`${2 * Math.PI * 38 * (1 - score / 100)}`}
@@ -271,7 +271,7 @@ export default function JobDetail() {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-xl font-bold" style={{ color: ringColor }}>{score}%</span>
-                <span className="text-[10px] text-white/40">match</span>
+                <span className="text-[10px] text-muted-foreground">match</span>
               </div>
             </div>
             <p className={cn('text-xs mt-1 font-medium', fit.color)}>{fit.desc}</p>
@@ -279,7 +279,7 @@ export default function JobDetail() {
         </div>
 
         {/* Action bar */}
-        <div className="border-t border-white/5 px-6 py-3.5 flex items-center gap-2 flex-wrap">
+        <div className="border-t border-border px-6 py-3.5 flex items-center gap-2 flex-wrap">
           {job.contact_email && (
             <motion.a href={`mailto:${job.contact_email}`} whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors">
@@ -288,19 +288,19 @@ export default function JobDetail() {
           )}
           {job.apply_link && (
             <a href={job.apply_link} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 px-5 py-2 rounded-xl glass border border-white/15 text-white/70 hover:text-white text-sm transition-all">
+              className="flex items-center gap-2 px-5 py-2 rounded-xl glass border border-border text-foreground/80 hover:text-foreground text-sm transition-all">
               <ExternalLink className="w-4 h-4" /> Apply Link
             </a>
           )}
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => shortlistMutation.mutate()}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-xl border text-sm transition-all',
-              shortlisted ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400' : 'glass border-white/10 text-white/60 hover:text-white'
+              shortlisted ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400' : 'glass border-border text-muted-foreground hover:text-foreground'
             )}>
             <Star className={cn('w-4 h-4', shortlisted && 'fill-yellow-400')} />
             {shortlisted ? 'Shortlisted' : 'Shortlist'}
           </motion.button>
-          <Link to="/jobs" className="flex items-center gap-2 px-4 py-2 rounded-xl glass border border-white/10 text-white/60 hover:text-white text-sm transition-all">
+          <Link to="/jobs" className="flex items-center gap-2 px-4 py-2 rounded-xl glass border border-border text-muted-foreground hover:text-foreground text-sm transition-all">
             <GitCompare className="w-4 h-4" /> Compare
           </Link>
 
@@ -334,7 +334,7 @@ export default function JobDetail() {
           {/* Job Overview */}
           {job.description && (
             <Section title="Job Overview" icon={BookOpen}>
-              <p className="text-white/60 text-sm leading-relaxed">{job.description}</p>
+              <p className="text-muted-foreground text-sm leading-relaxed">{job.description}</p>
             </Section>
           )}
 
@@ -344,32 +344,32 @@ export default function JobDetail() {
               badge={<span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/25">AI</span>}>
               {aiLoading ? (
                 <div className="space-y-2">
-                  {[1,2,3].map(i => <div key={i} className="h-3 bg-white/5 rounded animate-pulse" style={{ width: `${70 + i * 10}%` }} />)}
+                  {[1,2,3].map(i => <div key={i} className="h-3 bg-foreground/5 rounded animate-pulse" style={{ width: `${70 + i * 10}%` }} />)}
                 </div>
               ) : ai?.summary ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-[10px] text-white/30">
-                    {ai.cached && <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10">⚡ Cached — instant, no AI quota used</span>}
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    {ai.cached && <span className="px-1.5 py-0.5 rounded bg-foreground/5 border border-border">⚡ Cached — instant, no AI quota used</span>}
                     <button onClick={regenerateAI} disabled={regenerating}
                       className="px-1.5 py-0.5 rounded border border-purple-500/25 text-purple-400/80 hover:bg-purple-500/10 disabled:opacity-40">
                       {regenerating ? 'Regenerating…' : '↻ Regenerate'}
                     </button>
                   </div>
-                  <p className="text-white/65 text-sm leading-relaxed">{ai.summary}</p>
+                  <p className="text-foreground/80 text-sm leading-relaxed">{ai.summary}</p>
                   {ai.experience_analysis && (
-                    <p className="text-xs text-white/45 leading-relaxed border-l-2 border-indigo-500/30 pl-3">{ai.experience_analysis}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-indigo-500/30 pl-3">{ai.experience_analysis}</p>
                   )}
                   {ai.career_advice && (
                     <div className="p-3 rounded-xl bg-indigo-500/8 border border-indigo-500/15">
                       <p className="text-xs text-indigo-400 font-medium mb-1 flex items-center gap-1.5">
                         <Zap className="w-3 h-3" /> Career Advice
                       </p>
-                      <p className="text-xs text-white/55 leading-relaxed">{ai.career_advice}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{ai.career_advice}</p>
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-white/30">Click "Run AI Analysis" to generate insights for this role.</p>
+                <p className="text-xs text-muted-foreground">Click "Run AI Analysis" to generate insights for this role.</p>
               )}
             </Section>
           )}
@@ -382,7 +382,7 @@ export default function JobDetail() {
                   <div className="space-y-2">
                     <p className="text-xs text-emerald-400/80 font-medium">Why it fits you</p>
                     {ai!.why_match!.map((r, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs text-white/60">
+                      <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />{r}
                       </div>
                     ))}
@@ -392,7 +392,7 @@ export default function JobDetail() {
                   <div className="space-y-2">
                     <p className="text-xs text-red-400/80 font-medium">Honest concerns</p>
                     {ai!.why_not!.map((r, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs text-white/60">
+                      <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                         <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />{r}
                       </div>
                     ))}
@@ -406,10 +406,10 @@ export default function JobDetail() {
           {aiEnabled && ai?.company_overview && (
             <Section title="Company Intelligence" icon={Briefcase} iconColor="text-cyan-400" defaultOpen={false}>
               <div className="space-y-4">
-                <p className="text-sm text-white/60 leading-relaxed">{ai.company_overview}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{ai.company_overview}</p>
                 {(ai.company_tech_stack?.length ?? 0) > 0 && (
                   <div>
-                    <p className="text-xs text-white/40 mb-2">Likely tech stack</p>
+                    <p className="text-xs text-muted-foreground mb-2">Likely tech stack</p>
                     <div className="flex flex-wrap gap-1.5">
                       {ai.company_tech_stack!.map(t => (
                         <span key={t} className="text-xs px-2 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">{t}</span>
@@ -418,9 +418,9 @@ export default function JobDetail() {
                   </div>
                 )}
                 {ai.role_growth && (
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/8">
-                    <p className="text-xs text-white/40 mb-1">Role growth (2–3 years)</p>
-                    <p className="text-xs text-white/60 leading-relaxed">{ai.role_growth}</p>
+                  <div className="p-3 rounded-xl bg-foreground/[0.03] border border-border">
+                    <p className="text-xs text-muted-foreground mb-1">Role growth (2–3 years)</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{ai.role_growth}</p>
                   </div>
                 )}
                 {(ai.future_opportunities?.length ?? 0) > 0 && (
@@ -432,14 +432,14 @@ export default function JobDetail() {
                 )}
                 {ai.salary_analysis && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                    <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/8">
-                      <p className="text-white/35">Market</p><p className="text-white/70 mt-0.5">{ai.salary_analysis.market}</p>
+                    <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-border">
+                      <p className="text-muted-foreground">Market</p><p className="text-foreground/80 mt-0.5">{ai.salary_analysis.market}</p>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/8">
-                      <p className="text-white/35">Offered</p><p className="text-yellow-400/90 mt-0.5">{ai.salary_analysis.offered}</p>
+                    <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-border">
+                      <p className="text-muted-foreground">Offered</p><p className="text-yellow-400/90 mt-0.5">{ai.salary_analysis.offered}</p>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/8">
-                      <p className="text-white/35">Verdict</p><p className="text-white/70 mt-0.5">{ai.salary_analysis.verdict}</p>
+                    <div className="p-2.5 rounded-lg bg-foreground/[0.03] border border-border">
+                      <p className="text-muted-foreground">Verdict</p><p className="text-foreground/80 mt-0.5">{ai.salary_analysis.verdict}</p>
                     </div>
                   </div>
                 )}
@@ -455,11 +455,11 @@ export default function JobDetail() {
                   <div key={s.step} className="flex items-start gap-3">
                     <div className="w-7 h-7 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center justify-center shrink-0">{s.step}</div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white/80 font-medium flex items-center gap-2">
+                      <p className="text-sm text-foreground/80 font-medium flex items-center gap-2">
                         {s.title}
-                        {s.eta && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/40 font-normal">{s.eta}</span>}
+                        {s.eta && <span className="text-[10px] px-1.5 py-0.5 rounded bg-foreground/5 border border-border text-muted-foreground font-normal">{s.eta}</span>}
                       </p>
-                      <p className="text-xs text-white/45 mt-0.5 leading-relaxed">{s.detail}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.detail}</p>
                     </div>
                   </div>
                 ))}
@@ -515,19 +515,19 @@ export default function JobDetail() {
           {(job.match_breakdown?.length ?? 0) > 0 && (
             <Section title="Match Score Breakdown" icon={Target}>
               <div className="space-y-4">
-                <p className="text-xs text-white/35">
+                <p className="text-xs text-muted-foreground">
                   Weighted 100-point engine — components without data (e.g. no resume uploaded) are excluded and the score is normalized.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                   {job.match_breakdown!.map(b => (
                     <div key={b.key} className={cn(!b.available && 'opacity-35')}>
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-white/60">{b.label}</span>
-                        <span className="text-white/80 font-semibold tabular-nums">
+                        <span className="text-muted-foreground">{b.label}</span>
+                        <span className="text-foreground/80 font-semibold tabular-nums">
                           {b.available ? `${b.score} / ${b.max}` : 'No data'}
                         </span>
                       </div>
-                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: b.available ? `${(b.score / b.max) * 100}%` : '0%' }}
@@ -567,7 +567,7 @@ export default function JobDetail() {
               <ATSBar label="Keywords" score={atsKeywords} />
               <ATSBar label="Formatting" score={atsFormat} />
             </div>
-            <p className="text-xs text-white/30 mt-3">
+            <p className="text-xs text-muted-foreground mt-3">
               Overall ATS score: <span className={cn('font-bold', atsOverall >= 80 ? 'text-emerald-400' : atsOverall >= 60 ? 'text-yellow-400' : 'text-red-400')}>{atsOverall}</span>
               {atsOverall >= 80 ? ' — Your resume is well optimised for this role.' : atsOverall >= 60 ? ' — Add missing keywords to improve your score.' : ' — Significant gaps. Consider skill building first.'}
             </p>
@@ -578,19 +578,19 @@ export default function JobDetail() {
             <Section title="AI Cover Letter" icon={FileText} iconColor="text-cyan-400" defaultOpen={false}
               badge={<span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">AI</span>}>
               {aiLoading ? (
-                <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-3 bg-white/5 rounded animate-pulse" />)}</div>
+                <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-3 bg-foreground/5 rounded animate-pulse" />)}</div>
               ) : ai?.cover_letter ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-white/40">Personalised cover letter for {job.company}</p>
+                    <p className="text-xs text-muted-foreground">Personalised cover letter for {job.company}</p>
                     <CopyButton text={ai.cover_letter} />
                   </div>
-                  <div className="bg-white/3 rounded-xl border border-white/8 p-4">
-                    <p className="text-sm text-white/65 leading-relaxed whitespace-pre-line">{ai.cover_letter}</p>
+                  <div className="bg-foreground/[0.03] rounded-xl border border-border p-4">
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">{ai.cover_letter}</p>
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-white/30">Run AI Analysis to generate a personalised cover letter.</p>
+                <p className="text-xs text-muted-foreground">Run AI Analysis to generate a personalised cover letter.</p>
               )}
             </Section>
           )}
@@ -600,18 +600,18 @@ export default function JobDetail() {
             <Section title="Interview Prep" icon={MessageSquare} iconColor="text-orange-400" defaultOpen={false}
               badge={<span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 border border-orange-500/25">AI</span>}>
               {aiLoading ? (
-                <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-8 bg-white/5 rounded animate-pulse" />)}</div>
+                <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-8 bg-foreground/5 rounded animate-pulse" />)}</div>
               ) : (ai?.interview_questions?.length ?? 0) > 0 ? (
                 <ul className="space-y-2">
                   {ai!.interview_questions.map((q, i) => (
-                    <li key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/3 border border-white/8 text-sm text-white/65">
+                    <li key={i} className="flex items-start gap-3 p-3 rounded-xl bg-foreground/[0.03] border border-border text-sm text-foreground/80">
                       <span className="shrink-0 w-5 h-5 rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
                       {q}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-white/30">Run AI Analysis to generate role-specific interview questions.</p>
+                <p className="text-xs text-muted-foreground">Run AI Analysis to generate role-specific interview questions.</p>
               )}
             </Section>
           )}
@@ -625,10 +625,10 @@ export default function JobDetail() {
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</div>
                     {typeof step === 'string' ? (
-                      <p className="text-sm text-white/60">{step}</p>
+                      <p className="text-sm text-muted-foreground">{step}</p>
                     ) : (
                       <div className="min-w-0">
-                        <p className="text-sm text-white/70 font-medium flex items-center gap-2">
+                        <p className="text-sm text-foreground/80 font-medium flex items-center gap-2">
                           {step.skill}
                           {step.time && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-normal">
@@ -636,7 +636,7 @@ export default function JobDetail() {
                             </span>
                           )}
                         </p>
-                        {step.how && <p className="text-xs text-white/40 mt-0.5">{step.how}</p>}
+                        {step.how && <p className="text-xs text-muted-foreground mt-0.5">{step.how}</p>}
                       </div>
                     )}
                   </div>
@@ -651,12 +651,12 @@ export default function JobDetail() {
               <div className="space-y-3">
                 {job.contact_email && (
                   <a href={`mailto:${job.contact_email}`}
-                    className="flex items-center gap-3 text-sm text-white/60 hover:text-indigo-400 transition-colors">
+                    className="flex items-center gap-3 text-sm text-muted-foreground hover:text-indigo-400 transition-colors">
                     <Mail className="w-4 h-4" />{job.contact_email}
                   </a>
                 )}
                 {(job as any).contact_phone && (
-                  <span className="flex items-center gap-3 text-sm text-white/60">
+                  <span className="flex items-center gap-3 text-sm text-muted-foreground">
                     <Phone className="w-4 h-4" />{(job as any).contact_phone}
                   </span>
                 )}
@@ -695,7 +695,7 @@ export default function JobDetail() {
               ) : (
                 <>
                   <p className={cn('text-3xl font-black', fit.color)}>{score >= 55 ? 'YES' : 'MAYBE'}</p>
-                  <p className="text-xs text-white/40 mt-1">{fit.desc}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{fit.desc}</p>
                 </>
               )}
             </div>
@@ -713,20 +713,20 @@ export default function JobDetail() {
                     ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
                   }
-                  <span className={ok ? 'text-white/70' : 'text-white/40'}>{label}</span>
+                  <span className={ok ? 'text-foreground/80' : 'text-muted-foreground'}>{label}</span>
                 </div>
               ))}
             </div>
 
             {ai?.apply_reason && (
-              <p className="text-xs text-white/50 leading-relaxed border-t border-white/10 pt-3">{ai.apply_reason}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed border-t border-border pt-3">{ai.apply_reason}</p>
             )}
           </motion.div>
 
           {/* Success Probability */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
-            className="glass rounded-2xl border border-white/10 p-5 space-y-3">
-            <h3 className="text-white font-medium text-sm flex items-center gap-2">
+            className="glass rounded-2xl border border-border p-5 space-y-3">
+            <h3 className="text-foreground font-medium text-sm flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-indigo-400" /> Success Probability
               {ai?.probabilities && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/25 text-purple-400 font-medium">AI</span>
@@ -744,10 +744,10 @@ export default function JobDetail() {
             ]).map(({ label, value }) => (
               <div key={label} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-white/50">{label}</span>
-                  <span className="font-bold text-white/70">{value}%</span>
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-bold text-foreground/80">{value}%</span>
                 </div>
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden">
                   <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.7, delay: 0.3 }}
                     className={cn('h-full rounded-full', value >= 70 ? 'bg-emerald-500' : value >= 50 ? 'bg-yellow-500' : 'bg-red-500')} />
                 </div>
@@ -756,8 +756,8 @@ export default function JobDetail() {
 
             {/* AI extras: recruiter interest + competition */}
             {ai?.recruiter_interest != null && (
-              <div className="flex items-center justify-between text-xs border-t border-white/8 pt-3">
-                <span className="text-white/50">Recruiter Interest</span>
+              <div className="flex items-center justify-between text-xs border-t border-border pt-3">
+                <span className="text-muted-foreground">Recruiter Interest</span>
                 <span className={cn('font-bold',
                   ai.recruiter_interest >= 70 ? 'text-emerald-400' : ai.recruiter_interest >= 50 ? 'text-yellow-400' : 'text-red-400')}>
                   {ai.recruiter_interest}%
@@ -767,7 +767,7 @@ export default function JobDetail() {
             {ai?.competition_level && (
               <div className="text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-white/50">Competition</span>
+                  <span className="text-muted-foreground">Competition</span>
                   <span className={cn('px-2 py-0.5 rounded-full border text-[10px] font-medium',
                     ai.competition_level.level === 'Low' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
                       : ai.competition_level.level === 'Medium' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/25'
@@ -775,7 +775,7 @@ export default function JobDetail() {
                     {ai.competition_level.level}
                   </span>
                 </div>
-                <p className="text-white/30 mt-1.5 leading-relaxed">{ai.competition_level.reason}</p>
+                <p className="text-muted-foreground mt-1.5 leading-relaxed">{ai.competition_level.reason}</p>
               </div>
             )}
           </motion.div>
@@ -783,13 +783,13 @@ export default function JobDetail() {
           {/* Requirements */}
           {job.skills?.length > 0 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
-              className="glass rounded-2xl border border-white/10 p-5">
-              <h3 className="text-white font-medium text-sm flex items-center gap-2 mb-3">
+              className="glass rounded-2xl border border-border p-5">
+              <h3 className="text-foreground font-medium text-sm flex items-center gap-2 mb-3">
                 <Target className="w-4 h-4 text-indigo-400" /> Requirements
               </h3>
               <ul className="space-y-1.5">
                 {job.experience_min != null && (
-                  <li className="flex items-center gap-2 text-xs text-white/55">
+                  <li className="flex items-center gap-2 text-xs text-muted-foreground">
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-400/50 shrink-0" />
                     {job.experience_min}–{job.experience_max} years experience
                   </li>
@@ -800,7 +800,7 @@ export default function JobDetail() {
                       ? <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" />
                       : <XCircle className="w-3 h-3 text-red-400/60 shrink-0" />
                     }
-                    <span className={(job.matched_skills ?? []).includes(s) ? 'text-white/65' : 'text-white/35'}>{s}</span>
+                    <span className={(job.matched_skills ?? []).includes(s) ? 'text-foreground/80' : 'text-muted-foreground'}>{s}</span>
                   </li>
                 ))}
               </ul>
@@ -816,12 +816,12 @@ export default function JobDetail() {
               </h3>
               {job.salary && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-white/40">Posted Range:</span>
-                  <span className="text-sm text-white/80 font-medium">{job.salary}</span>
+                  <span className="text-xs text-muted-foreground">Posted Range:</span>
+                  <span className="text-sm text-foreground/80 font-medium">{job.salary}</span>
                 </div>
               )}
               {ai?.salary_guidance && (
-                <p className="text-xs text-white/50 leading-relaxed">{ai.salary_guidance}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{ai.salary_guidance}</p>
               )}
             </motion.div>
           )}

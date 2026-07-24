@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.job import Job
 from app.models.import_session import ImportSession, STAGES
-from app.utils.auth import require_admin
+from app.utils.auth import get_current_user
 from app.services.import_service import spawn_import
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -55,7 +55,7 @@ def _serialize(s: ImportSession) -> dict:
 
 
 @router.post("/start")
-async def start_import(body: StartRequest, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def start_import(body: StartRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     if not body.text.strip():
         raise HTTPException(400, "No text provided")
     running = (await db.execute(
@@ -75,7 +75,7 @@ async def start_import(body: StartRequest, db: AsyncSession = Depends(get_db), u
 
 
 @router.get("/")
-async def history(db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def history(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     rows = (await db.execute(
         select(ImportSession).where(ImportSession.user_id == user.id)
         .order_by(ImportSession.created_at.desc()).limit(25)
@@ -84,7 +84,7 @@ async def history(db: AsyncSession = Depends(get_db), user: User = Depends(requi
 
 
 @router.get("/{sid}/status")
-async def status(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def status(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     s = (await db.execute(select(ImportSession).where(
         ImportSession.id == sid, ImportSession.user_id == user.id))).scalar_one_or_none()
     if not s:
@@ -93,7 +93,7 @@ async def status(sid: str, db: AsyncSession = Depends(get_db), user: User = Depe
 
 
 @router.post("/{sid}/cancel")
-async def cancel(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def cancel(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     s = (await db.execute(select(ImportSession).where(
         ImportSession.id == sid, ImportSession.user_id == user.id))).scalar_one_or_none()
     if not s:
@@ -106,7 +106,7 @@ async def cancel(sid: str, db: AsyncSession = Depends(get_db), user: User = Depe
 
 
 @router.post("/{sid}/retry")
-async def retry(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def retry(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     s = (await db.execute(select(ImportSession).where(
         ImportSession.id == sid, ImportSession.user_id == user.id))).scalar_one_or_none()
     if not s:
@@ -126,7 +126,7 @@ async def retry(sid: str, db: AsyncSession = Depends(get_db), user: User = Depen
 
 
 @router.get("/{sid}/jobs")
-async def session_jobs(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def session_jobs(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     rows = (await db.execute(select(Job).where(
         Job.user_id == user.id, Job.import_session_id == sid))).scalars().all()
     return rows
@@ -138,7 +138,7 @@ class ReviewRequest(BaseModel):
 
 
 @router.post("/{sid}/review")
-async def review(sid: str, body: ReviewRequest, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def review(sid: str, body: ReviewRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """Publish (or reject) pending jobs from a session — jobs go live only here."""
     if body.decision not in ("approved", "rejected"):
         raise HTTPException(400, "decision must be approved|rejected")

@@ -102,6 +102,44 @@ export interface Job {
   created_at: string
 }
 
+export interface SkillIntelligence {
+  skill: string
+  category: 'Programming' | 'Framework' | 'Cloud' | 'AI/ML' | 'Tool' | 'Soft Skill'
+  years: number | null
+  confidence: number | null
+  last_used: string | number | null
+}
+
+export interface EducationEntry {
+  college: string
+  degree: string
+  cgpa: string | number | null
+  year: string | number | null
+}
+
+export interface ResumeExperienceEntry {
+  company: string
+  role: string
+  start: string
+  end: string
+  current: boolean
+  duration: string | null
+  responsibilities: string[]
+}
+
+export interface ResumeProject {
+  name: string
+  description?: string
+  tech?: string[]
+  github?: string | null
+  live?: string | null
+}
+
+export interface ResumeCertificate {
+  name: string
+  issuer?: string | null
+}
+
 export interface Resume {
   id: string
   name: string
@@ -112,6 +150,16 @@ export interface Resume {
   weak_sections: string[]
   created_at: string
   updated_at: string
+  contact_info?: { name?: string; phone?: string; email?: string; location?: string } | null
+  education?: EducationEntry[] | null
+  experience_entries?: ResumeExperienceEntry[] | null
+  projects_extracted?: ResumeProject[] | null
+  certificates_extracted?: ResumeCertificate[] | null
+  skill_intelligence?: SkillIntelligence[] | null
+  github_detected?: string | null
+  portfolio_detected?: string | null
+  total_experience_computed?: string | null
+  section_scores?: Record<string, number> | null
 }
 
 export interface SmtpConfig {

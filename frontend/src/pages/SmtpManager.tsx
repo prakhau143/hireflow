@@ -165,8 +165,8 @@ export default function SmtpManager() {
   return (
     <div className="w-full space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Email Delivery Center</h1>
-        <p className="text-white/40 text-sm mt-0.5">Configure, verify and manage your email delivery for AI job applications</p>
+        <h1 className="text-2xl font-bold text-foreground">Email Delivery Center</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">Configure, verify and manage your email delivery for AI job applications</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -176,28 +176,28 @@ export default function SmtpManager() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-2xl border border-white/10 p-6"
+            className="glass rounded-2xl border border-border p-6"
           >
             <div className="flex items-center gap-2 mb-6">
               <Server className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-white font-semibold">SMTP Configuration</h2>
+              <h2 className="text-foreground font-semibold">SMTP Configuration</h2>
             </div>
 
             {isLoading ? (
               <div className="space-y-4">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="h-12 rounded-xl bg-white/5 shimmer" />
+                  <div key={i} className="h-12 rounded-xl bg-foreground/5 shimmer" />
                 ))}
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Provider Selection */}
                 <div className="space-y-1.5">
-                  <label className="text-xs text-white/40 uppercase tracking-wider">SMTP Provider</label>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider">SMTP Provider</label>
                   <select
                     value={form.provider}
                     onChange={(e) => setField('provider', e.target.value)}
-                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/70 border border-white/10 focus:border-indigo-500/40 focus:outline-none"
+                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/80 border border-border focus:border-indigo-500/40 focus:outline-none"
                   >
                     <option value="gmail">Gmail</option>
                     <option value="outlook">Outlook</option>
@@ -214,30 +214,30 @@ export default function SmtpManager() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs text-white/40 uppercase tracking-wider">Google Email</label>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider">Google Email</label>
                   <input
                     type="email"
                     value={form.username}
                     onChange={(e) => setField('username', e.target.value)}
                     placeholder="example@gmail.com"
-                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/70 placeholder:text-white/25 border border-white/10 focus:border-indigo-500/40 focus:outline-none"
+                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/80 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs text-white/40 uppercase tracking-wider">App Password</label>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider">App Password</label>
                   <div className="relative">
                     <input
                       type={showPass ? 'text' : 'password'}
                       value={form.password}
                       onChange={(e) => setField('password', e.target.value)}
                       placeholder={primarySmtp ? '••••••••••• (leave blank to keep)' : 'App password'}
-                      className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/70 placeholder:text-white/25 border border-white/10 focus:border-indigo-500/40 focus:outline-none pr-20"
+                      className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/80 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none pr-20"
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                       <button
                         onClick={() => setShowPass(!showPass)}
-                        className="p-1.5 text-white/30 hover:text-white/60 rounded-lg hover:bg-white/5 transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-muted-foreground rounded-lg hover:bg-foreground/5 transition-colors"
                       >
                         {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -258,7 +258,7 @@ export default function SmtpManager() {
                     </div>
                     <div className="flex-1">
                       <h3 className="text-sm font-medium text-indigo-300 mb-2">Need a Gmail App Password?</h3>
-                      <ol className="text-xs text-white/50 space-y-1 list-decimal list-inside">
+                      <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
                         <li>Enable Two Factor Authentication</li>
                         <li>Visit <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">myaccount.google.com/apppasswords</a></li>
                         <li>Generate App Password</li>
@@ -291,7 +291,7 @@ export default function SmtpManager() {
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setShowTestEmail(true)}
                     disabled={!primarySmtp?.id || !isConnected}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass border border-white/15 text-sm text-white/70 hover:text-white hover:border-white/25 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass border border-border text-sm text-foreground/80 hover:text-foreground hover:border-accent/30 transition-all disabled:opacity-50"
                   >
                     <Send className="w-4 h-4" />
                     Send Test Email
@@ -300,7 +300,7 @@ export default function SmtpManager() {
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setShowPreview(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass border border-white/15 text-sm text-white/70 hover:text-white hover:border-white/25 transition-all"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass border border-border text-sm text-foreground/80 hover:text-foreground hover:border-accent/30 transition-all"
                   >
                     <Eye className="w-4 h-4" />
                     Preview Email
@@ -335,7 +335,7 @@ export default function SmtpManager() {
                         <div className="flex items-center gap-3">
                           <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
                           <p className="text-emerald-300 text-sm font-medium">SMTP verified successfully! Test email sent to your inbox.</p>
-                          <button onClick={() => setVerifyResult(null)} className="ml-auto text-white/30 hover:text-white/60 text-lg leading-none">×</button>
+                          <button onClick={() => setVerifyResult(null)} className="ml-auto text-muted-foreground hover:text-muted-foreground text-lg leading-none">×</button>
                         </div>
                       ) : verifyResult.error_code === 'AUTH_FAILED' ? (
                         <div>
@@ -345,7 +345,7 @@ export default function SmtpManager() {
                               <p className="text-red-300 text-sm font-semibold">Gmail App Password Rejected</p>
                               <p className="text-red-400/70 text-xs mt-0.5">Gmail rejected your credentials. Follow these steps to fix it:</p>
                             </div>
-                            <button onClick={() => setVerifyResult(null)} className="text-white/30 hover:text-white/60 text-lg leading-none shrink-0">×</button>
+                            <button onClick={() => setVerifyResult(null)} className="text-muted-foreground hover:text-muted-foreground text-lg leading-none shrink-0">×</button>
                           </div>
                           <ol className="space-y-2 ml-8">
                             {[
@@ -355,13 +355,13 @@ export default function SmtpManager() {
                               { step: 4, text: 'Create a new App Password for', bold: '"Mail"', suffix: 'and copy the 16-character code Google shows' },
                               { step: 5, text: 'Paste that code', bold: 'without spaces', suffix: 'in the App Password field above, then save and re-verify' },
                             ].map(({ step, text, link, href, bold, suffix }) => (
-                              <li key={step} className="flex items-start gap-2 text-xs text-white/60">
+                              <li key={step} className="flex items-start gap-2 text-xs text-muted-foreground">
                                 <span className="shrink-0 w-5 h-5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-bold flex items-center justify-center mt-0.5">{step}</span>
                                 <span>
                                   {text}{' '}
                                   {link && <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{link}</a>}
-                                  {bold && <span className="text-white/80 font-medium"> {bold}</span>}
-                                  {suffix && <span className="text-white/40"> {suffix}</span>}
+                                  {bold && <span className="text-foreground/85 font-medium"> {bold}</span>}
+                                  {suffix && <span className="text-muted-foreground"> {suffix}</span>}
                                 </span>
                               </li>
                             ))}
@@ -379,7 +379,7 @@ export default function SmtpManager() {
                         <div className="flex items-center gap-3">
                           <XCircle className="w-5 h-5 text-red-400 shrink-0" />
                           <p className="text-red-300 text-sm">{verifyResult.message}</p>
-                          <button onClick={() => setVerifyResult(null)} className="ml-auto text-white/30 hover:text-white/60 text-lg leading-none">×</button>
+                          <button onClick={() => setVerifyResult(null)} className="ml-auto text-muted-foreground hover:text-muted-foreground text-lg leading-none">×</button>
                         </div>
                       )}
                     </motion.div>
@@ -395,44 +395,44 @@ export default function SmtpManager() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="glass rounded-2xl border border-white/10 p-6"
+              className="glass rounded-2xl border border-border p-6"
             >
-              <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+              <h3 className="text-foreground font-medium mb-4 flex items-center gap-2">
                 <Settings className="w-4 h-4 text-indigo-400" />
                 Saved Configuration
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <p className="text-white/40 text-xs mb-1">Provider</p>
-                  <p className="text-white/80">{primarySmtp.provider || 'Custom'}</p>
+                  <p className="text-muted-foreground text-xs mb-1">Provider</p>
+                  <p className="text-foreground/85">{primarySmtp.provider || 'Custom'}</p>
                 </div>
                 <div>
-                  <p className="text-white/40 text-xs mb-1">Email</p>
-                  <p className="text-white/80">{primarySmtp.username}</p>
+                  <p className="text-muted-foreground text-xs mb-1">Email</p>
+                  <p className="text-foreground/85">{primarySmtp.username}</p>
                 </div>
                 <div>
-                  <p className="text-white/40 text-xs mb-1">Port</p>
-                  <p className="text-white/80">{primarySmtp.port}</p>
+                  <p className="text-muted-foreground text-xs mb-1">Port</p>
+                  <p className="text-foreground/85">{primarySmtp.port}</p>
                 </div>
                 <div>
-                  <p className="text-white/40 text-xs mb-1">Encryption</p>
-                  <p className="text-white/80">{primarySmtp.encryption}</p>
+                  <p className="text-muted-foreground text-xs mb-1">Encryption</p>
+                  <p className="text-foreground/85">{primarySmtp.encryption}</p>
                 </div>
                 <div>
-                  <p className="text-white/40 text-xs mb-1">Status</p>
+                  <p className="text-muted-foreground text-xs mb-1">Status</p>
                   <p className={cn(isConnected ? 'text-emerald-400' : 'text-red-400')}>
                     {isConnected ? 'Connected' : 'Not Verified'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-white/40 text-xs mb-1">Last Tested</p>
-                  <p className="text-white/80">
+                  <p className="text-muted-foreground text-xs mb-1">Last Tested</p>
+                  <p className="text-foreground/85">
                     {primarySmtp.last_tested ? new Date(primarySmtp.last_tested).toLocaleString() : 'Never'}
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-white/40 text-xs mb-1">Password</p>
-                  <p className="text-white/80">{'•'.repeat(16)}</p>
+                  <p className="text-muted-foreground text-xs mb-1">Password</p>
+                  <p className="text-foreground/85">{'•'.repeat(16)}</p>
                 </div>
               </div>
             </motion.div>
@@ -446,22 +446,22 @@ export default function SmtpManager() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="glass rounded-2xl border border-white/10 p-6"
+            className="glass rounded-2xl border border-border p-6"
           >
             <div className="flex items-center gap-2 mb-6">
               <Activity className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-white font-semibold">Connection Status</h2>
+              <h2 className="text-foreground font-semibold">Connection Status</h2>
             </div>
 
             {!primarySmtp ? (
               <div className="text-center py-8">
-                <Server className="w-12 h-12 text-white/20 mx-auto mb-3" />
-                <p className="text-white/40 text-sm">No configuration yet</p>
+                <Server className="w-12 h-12 text-muted-foreground/60 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">No configuration yet</p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-white/60 text-sm">Status</span>
+                  <span className="text-muted-foreground text-sm">Status</span>
                   <div className={cn(
                     'flex items-center gap-2 text-sm',
                     isConnected ? 'text-emerald-400' : 'text-red-400'
@@ -472,20 +472,20 @@ export default function SmtpManager() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-white/60 text-sm">Provider</span>
-                  <span className="text-white/80 text-sm">{primarySmtp.provider || 'Custom'}</span>
+                  <span className="text-muted-foreground text-sm">Provider</span>
+                  <span className="text-foreground/85 text-sm">{primarySmtp.provider || 'Custom'}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-white/60 text-sm">Last Verified</span>
-                  <span className="text-white/80 text-sm">
+                  <span className="text-muted-foreground text-sm">Last Verified</span>
+                  <span className="text-foreground/85 text-sm">
                     {primarySmtp.last_tested ? new Date(primarySmtp.last_tested).toLocaleString() : 'Never'}
                   </span>
                 </div>
 
-                <div className="border-t border-white/10 pt-4">
+                <div className="border-t border-border pt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-white/60 text-sm">Connection Health</span>
+                    <span className="text-muted-foreground text-sm">Connection Health</span>
                     <span className={cn(
                       'text-sm font-bold',
                       healthScore >= 90 ? 'text-emerald-400' : healthScore >= 70 ? 'text-yellow-400' : 'text-red-400'
@@ -493,7 +493,7 @@ export default function SmtpManager() {
                       {healthScore}%
                     </span>
                   </div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-2 bg-foreground/10 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${healthScore}%` }}
@@ -507,12 +507,12 @@ export default function SmtpManager() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-white/60 text-sm">Emails Sent</span>
-                  <span className="text-white/80 text-sm">{primarySmtp.emails_sent || 0}</span>
+                  <span className="text-muted-foreground text-sm">Emails Sent</span>
+                  <span className="text-foreground/85 text-sm">{primarySmtp.emails_sent || 0}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-white/60 text-sm">Success Rate</span>
+                  <span className="text-muted-foreground text-sm">Success Rate</span>
                   <span className="text-emerald-400 text-sm">
                     {primarySmtp.emails_sent > 0
                       ? Math.round(((primarySmtp.emails_sent - (primarySmtp.emails_failed || 0)) / primarySmtp.emails_sent) * 100)
@@ -529,28 +529,28 @@ export default function SmtpManager() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="glass rounded-2xl border border-white/10 p-6"
+              className="glass rounded-2xl border border-border p-6"
             >
-              <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+              <h3 className="text-foreground font-medium mb-4 flex items-center gap-2">
                 <Mail className="w-4 h-4 text-indigo-400" />
                 Email Analytics
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                <div className="glass rounded-xl border border-white/10 p-3 text-center">
-                  <p className="text-2xl font-bold text-white">{primarySmtp.emails_sent || 0}</p>
-                  <p className="text-xs text-white/40 mt-1">Sent</p>
+                <div className="glass rounded-xl border border-border p-3 text-center">
+                  <p className="text-2xl font-bold text-foreground">{primarySmtp.emails_sent || 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Sent</p>
                 </div>
-                <div className="glass rounded-xl border border-white/10 p-3 text-center">
+                <div className="glass rounded-xl border border-border p-3 text-center">
                   <p className="text-2xl font-bold text-emerald-400">{primarySmtp.emails_sent - (primarySmtp.emails_failed || 0)}</p>
-                  <p className="text-xs text-white/40 mt-1">Success</p>
+                  <p className="text-xs text-muted-foreground mt-1">Success</p>
                 </div>
-                <div className="glass rounded-xl border border-white/10 p-3 text-center">
+                <div className="glass rounded-xl border border-border p-3 text-center">
                   <p className="text-2xl font-bold text-red-400">{primarySmtp.emails_failed || 0}</p>
-                  <p className="text-xs text-white/40 mt-1">Failed</p>
+                  <p className="text-xs text-muted-foreground mt-1">Failed</p>
                 </div>
-                <div className="glass rounded-xl border border-white/10 p-3 text-center">
-                  <p className="text-2xl font-bold text-white">{primarySmtp.emails_sent || 0}</p>
-                  <p className="text-xs text-white/40 mt-1">Attachments</p>
+                <div className="glass rounded-xl border border-border p-3 text-center">
+                  <p className="text-2xl font-bold text-foreground">{primarySmtp.emails_sent || 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Attachments</p>
                 </div>
               </div>
             </motion.div>
@@ -562,9 +562,9 @@ export default function SmtpManager() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="glass rounded-2xl border border-white/10 p-6"
+              className="glass rounded-2xl border border-border p-6"
             >
-              <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+              <h3 className="text-foreground font-medium mb-4 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-indigo-400" />
                 Connection Logs
               </h3>
@@ -576,8 +576,8 @@ export default function SmtpManager() {
                       log.status === 'success' ? 'bg-emerald-400' : 'bg-red-400'
                     )} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-white/80">{log.message}</p>
-                      <p className="text-white/40 text-xs mt-0.5">
+                      <p className="text-foreground/85">{log.message}</p>
+                      <p className="text-muted-foreground text-xs mt-0.5">
                         {new Date(log.created_at).toLocaleString()}
                       </p>
                     </div>
@@ -604,22 +604,22 @@ export default function SmtpManager() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="glass rounded-2xl border border-white/15 p-6 max-w-md w-full"
+              className="glass rounded-2xl border border-border p-6 max-w-md w-full"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <h3 className="text-foreground font-semibold mb-4 flex items-center gap-2">
                 <Send className="w-4 h-4 text-indigo-400" />
                 Send Test Email
               </h3>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs text-white/40 uppercase tracking-wider">Send To</label>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wider">Send To</label>
                   <input
                     type="email"
                     value={testEmail}
                     onChange={(e) => setTestEmail(e.target.value)}
                     placeholder="someone@gmail.com"
-                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/70 placeholder:text-white/25 border border-white/10 focus:border-indigo-500/40 focus:outline-none"
+                    className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/80 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none"
                   />
                 </div>
                 <div className="flex gap-3">
@@ -633,7 +633,7 @@ export default function SmtpManager() {
                   </button>
                   <button
                     onClick={() => setShowTestEmail(false)}
-                    className="flex-1 px-4 py-2.5 rounded-xl glass border border-white/10 text-white/60 text-sm hover:text-white transition-colors"
+                    className="flex-1 px-4 py-2.5 rounded-xl glass border border-border text-muted-foreground text-sm hover:text-foreground transition-colors"
                   >
                     Cancel
                   </button>
@@ -659,10 +659,10 @@ export default function SmtpManager() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="glass rounded-2xl border border-white/15 p-6 max-w-xl w-full"
+              className="glass rounded-2xl border border-border p-6 max-w-xl w-full"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <h3 className="text-foreground font-semibold mb-4 flex items-center gap-2">
                 <Eye className="w-4 h-4 text-indigo-400" />
                 Email Preview
               </h3>
@@ -670,9 +670,9 @@ export default function SmtpManager() {
                 <PreviewRow label="From" value={`${form.from_name} <${form.from_email}>`} />
                 <PreviewRow label="Subject" value="Application for {role} at {company}" />
                 <PreviewRow label="Attachment" value="your_resume.pdf" highlight />
-                <div className="glass rounded-xl border border-white/10 p-3">
-                  <p className="text-white/40 text-xs mb-2">Body</p>
-                  <p className="text-white/60 leading-relaxed text-xs">
+                <div className="glass rounded-xl border border-border p-3">
+                  <p className="text-muted-foreground text-xs mb-2">Body</p>
+                  <p className="text-muted-foreground leading-relaxed text-xs">
                     Dear {'{name}'},<br /><br />
                     I came across your opening for {'{role}'} and would love to apply.
                     Please find my resume attached.<br /><br />
@@ -683,7 +683,7 @@ export default function SmtpManager() {
               </div>
               <button
                 onClick={() => setShowPreview(false)}
-                className="mt-5 w-full py-2.5 rounded-xl glass border border-white/10 text-white/60 text-sm hover:text-white transition-colors"
+                className="mt-5 w-full py-2.5 rounded-xl glass border border-border text-muted-foreground text-sm hover:text-foreground transition-colors"
               >
                 Close
               </button>
@@ -700,13 +700,13 @@ function FormField({ label, value, onChange, placeholder, type = 'text' }: {
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs text-white/40 uppercase tracking-wider">{label}</label>
+      <label className="text-xs text-muted-foreground uppercase tracking-wider">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full glass rounded-xl px-3 py-2.5 text-sm text-white/70 placeholder:text-white/25 border border-white/10 focus:border-indigo-500/40 focus:outline-none"
+        className="w-full glass rounded-xl px-3 py-2.5 text-sm text-foreground/80 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none"
       />
     </div>
   )
@@ -714,9 +714,9 @@ function FormField({ label, value, onChange, placeholder, type = 'text' }: {
 
 function PreviewRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="glass rounded-xl border border-white/10 p-3">
-      <p className="text-white/40 text-xs mb-1">{label}</p>
-      <p className={highlight ? 'text-indigo-400 text-xs' : 'text-white/80 text-sm'}>{value}</p>
+    <div className="glass rounded-xl border border-border p-3">
+      <p className="text-muted-foreground text-xs mb-1">{label}</p>
+      <p className={highlight ? 'text-indigo-400 text-xs' : 'text-foreground/85 text-sm'}>{value}</p>
     </div>
   )
 }

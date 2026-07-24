@@ -65,9 +65,9 @@ async def list_jobs(
 async def parse_jobs(
     body: ParseJobsRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_admin),
+    user: User = Depends(get_current_user),
 ):
-    """Enterprise hybrid pipeline — admin only. Returns jobs + detailed pipeline stats."""
+    """Enterprise hybrid pipeline — every user imports jobs into their own private pool. Returns jobs + detailed pipeline stats."""
     if not body.text.strip():
         raise HTTPException(status_code=400, detail="No text provided")
 

@@ -57,7 +57,7 @@ export default function ImportProgress({ sessionId, onDone }: { sessionId: strin
     },
   })
 
-  if (!s) return <div className="glass rounded-2xl border border-white/10 p-5 h-32 shimmer" />
+  if (!s) return <div className="glass rounded-2xl border border-border p-5 h-32 shimmer" />
 
   const done = s.status === 'completed'
   const dead = s.status === 'failed' || s.status === 'cancelled'
@@ -66,17 +66,17 @@ export default function ImportProgress({ sessionId, onDone }: { sessionId: strin
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-2xl border border-indigo-500/25 p-5 space-y-4">
+      className="glass rounded-2xl border border-accent/25 p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           {done ? <CheckCircle className="w-5 h-5 text-emerald-400" />
             : dead ? <XCircle className="w-5 h-5 text-red-400" />
             : <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />}
           <div>
-            <p className="text-white text-sm font-semibold">
+            <p className="text-foreground text-sm font-semibold">
               {done ? 'Import completed' : dead ? `Import ${s.status}` : 'Import running in background'}
             </p>
-            <p className="text-white/40 text-xs">
+            <p className="text-muted-foreground text-xs">
               {s.stage_label}
               {s.status === 'ai_extraction' && s.total_blocks > 0 && ` — block ${s.processed_blocks}/${s.total_blocks}`}
               {' '}· you can navigate anywhere, this keeps running
@@ -96,12 +96,12 @@ export default function ImportProgress({ sessionId, onDone }: { sessionId: strin
               <RefreshCw className="w-3 h-3" /> Retry
             </button>
           )}
-          <span className="text-lg font-bold text-white tabular-nums">{s.percent}%</span>
+          <span className="text-lg font-bold text-foreground tabular-nums">{s.percent}%</span>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+      <div className="h-2 bg-foreground/5 rounded-full overflow-hidden">
         <motion.div animate={{ width: `${s.percent}%` }} transition={{ ease: 'easeOut' }}
           className={cn('h-full rounded-full',
             dead ? 'bg-red-500' : done ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500')} />
@@ -115,10 +115,10 @@ export default function ImportProgress({ sessionId, onDone }: { sessionId: strin
           const active = st === s.status
           return (
             <span key={st} className={cn('flex items-center gap-1.5 text-[11px]',
-              past ? 'text-emerald-400' : active ? 'text-indigo-300' : 'text-white/25')}>
+              past ? 'text-emerald-400' : active ? 'text-indigo-300' : 'text-muted-foreground/60')}>
               {past ? <CheckCircle className="w-3 h-3" />
                 : active ? <Loader2 className="w-3 h-3 animate-spin" />
-                : <span className="w-3 h-3 rounded-full border border-white/15 inline-block" />}
+                : <span className="w-3 h-3 rounded-full border border-border inline-block" />}
               {STAGE_LABELS[st] ?? st}
             </span>
           )
@@ -132,8 +132,8 @@ export default function ImportProgress({ sessionId, onDone }: { sessionId: strin
             ['needs_review', 'flagged'], ['rejected', 'rejected'], ['duplicates', 'duplicates'], ['saved', 'saved']]
             .filter(([k]) => stats[k] !== undefined)
             .map(([k, label]) => (
-              <span key={k} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white/60">
-                <span className="text-white font-semibold">{stats[k]}</span> {label}
+              <span key={k} className="px-2 py-1 rounded-lg bg-foreground/5 border border-border text-muted-foreground">
+                <span className="text-foreground font-semibold">{stats[k]}</span> {label}
               </span>
             ))}
         </div>
@@ -143,11 +143,11 @@ export default function ImportProgress({ sessionId, onDone }: { sessionId: strin
 
       {/* Review gate actions */}
       {done && Number(stats.saved || 0) > 0 && (
-        <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+        <div className="flex items-center gap-2 pt-1 border-t border-border">
           <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-          <p className="text-xs text-white/50 flex-1">{stats.saved} jobs are in <b className="text-white/80">Pending Review</b> — publish to make them visible</p>
+          <p className="text-xs text-muted-foreground flex-1">{stats.saved} jobs are in <b className="text-foreground">Pending Review</b> — publish to make them visible</p>
           <button onClick={() => reviewMutation.mutate('rejected')}
-            className="px-3 py-1.5 rounded-lg border border-white/10 text-xs text-white/50 hover:text-red-400 hover:border-red-500/25">
+            className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-red-400 hover:border-red-500/25">
             Reject All
           </button>
           <button onClick={() => reviewMutation.mutate('approved')}
@@ -158,7 +158,7 @@ export default function ImportProgress({ sessionId, onDone }: { sessionId: strin
       )}
       {(done && Number(stats.saved || 0) === 0) || dead ? (
         <button onClick={() => { localStorage.removeItem(IMPORT_LS_KEY); onDone() }}
-          className="text-xs text-white/40 hover:text-white/70">Dismiss</button>
+          className="text-xs text-muted-foreground/70 hover:text-muted-foreground">Dismiss</button>
       ) : null}
     </motion.div>
   )

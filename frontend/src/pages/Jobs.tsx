@@ -100,13 +100,13 @@ function FilterDropdown({ label, active, activeCount, children, onClear }: Dropd
         className={cn(
           'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all whitespace-nowrap',
           active
-            ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300'
-            : 'glass border-white/10 text-white/60 hover:text-white hover:border-white/25'
+            ? 'bg-accent/20 border-accent/50 text-accent'
+            : 'glass border-border text-muted-foreground hover:text-foreground hover:border-accent/30'
         )}
       >
         {label}
         {activeCount && activeCount > 0 ? (
-          <span className="w-4 h-4 rounded-full bg-indigo-500 text-white text-[10px] flex items-center justify-center font-bold">
+          <span className="w-4 h-4 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-bold">
             {activeCount}
           </span>
         ) : (
@@ -120,7 +120,7 @@ function FilterDropdown({ label, active, activeCount, children, onClear }: Dropd
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.97 }}
             transition={{ duration: 0.12 }}
-            className="absolute top-full left-0 mt-1.5 z-50 min-w-[180px] glass rounded-xl border border-white/15 shadow-2xl shadow-black/40 p-3"
+            className="absolute top-full left-0 mt-1.5 z-50 min-w-[180px] glass rounded-xl border border-border shadow-2xl shadow-black/40 p-3"
           >
             {children}
             {onClear && active && (
@@ -144,11 +144,11 @@ function FilterOption({ label, active, onClick }: { label: string; active: boole
       onClick={onClick}
       className={cn(
         'flex items-center gap-2 w-full text-left text-xs px-2 py-1.5 rounded-lg transition-all',
-        active ? 'bg-indigo-500/20 text-indigo-300' : 'text-white/60 hover:bg-white/8 hover:text-white'
+        active ? 'bg-accent/20 text-accent' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'
       )}
     >
       <span className={cn('w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all',
-        active ? 'bg-indigo-500 border-indigo-500' : 'border-white/25'
+        active ? 'bg-accent border-accent' : 'border-border'
       )}>
         {active && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
       </span>
@@ -205,13 +205,13 @@ function CompareModal({ jobs, onClose }: { jobs: Job[]; onClose: () => void }) {
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
         onClick={e => e.stopPropagation()}
-        className="glass rounded-2xl border border-white/15 p-6 max-w-3xl w-full max-h-[80vh] overflow-auto"
+        className="glass rounded-2xl border border-border p-6 max-w-3xl w-full max-h-[80vh] overflow-auto"
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-white font-bold text-lg flex items-center gap-2">
+          <h2 className="text-foreground font-bold text-lg flex items-center gap-2">
             <GitCompare className="w-5 h-5 text-indigo-400" /> Compare Jobs
           </h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -220,8 +220,8 @@ function CompareModal({ jobs, onClose }: { jobs: Job[]; onClose: () => void }) {
           <div />
           {jobs.map(j => (
             <div key={j.id} className="text-center">
-              <p className="text-white font-medium text-sm">{j.title}</p>
-              <p className="text-white/40 text-xs">{j.company}</p>
+              <p className="text-foreground font-medium text-sm">{j.title}</p>
+              <p className="text-muted-foreground text-xs">{j.company}</p>
               <div className={cn(
                 'mt-1 text-xs font-bold px-2 py-0.5 rounded-full inline-block',
                 (j.match_score ?? 0) >= 80 ? 'text-emerald-400 bg-emerald-500/15' :
@@ -236,9 +236,9 @@ function CompareModal({ jobs, onClose }: { jobs: Job[]; onClose: () => void }) {
         <div className="space-y-1">
           {fields.map(({ label, key, fn }) => (
             <div key={label} className={cn('grid gap-4 px-3 py-2 rounded-lg', jobs.length === 2 ? 'grid-cols-3' : 'grid-cols-4')}>
-              <p className="text-xs text-white/40">{label}</p>
+              <p className="text-xs text-muted-foreground">{label}</p>
               {jobs.map(j => (
-                <p key={j.id} className="text-xs text-white/70">
+                <p key={j.id} className="text-xs text-foreground/80">
                   {fn ? fn(j) : (key ? String(j[key] ?? '—') : '—')}
                 </p>
               ))}
@@ -369,16 +369,16 @@ export default function Jobs() {
       {/* ── Page Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Jobs</h1>
-          <p className="text-white/40 text-sm mt-0.5">
+          <h1 className="text-2xl font-bold text-foreground">Jobs</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
             {isLoading ? 'Loading…' : `${filtered.length} jobs found`}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center glass rounded-xl p-1 border border-white/10">
+          <div className="flex items-center glass rounded-xl p-1 border border-border">
             {([['grid', LayoutGrid], ['list', List]] as const).map(([v, Icon]) => (
               <button key={v} onClick={() => setView(v)}
-                className={cn('p-1.5 rounded-lg transition-all', view === v ? 'bg-indigo-500/30 text-indigo-400' : 'text-white/40 hover:text-white/70')}>
+                className={cn('p-1.5 rounded-lg transition-all', view === v ? 'bg-accent/30 text-accent' : 'text-muted-foreground hover:text-foreground')}>
                 <Icon className="w-4 h-4" />
               </button>
             ))}
@@ -396,21 +396,21 @@ export default function Jobs() {
       <div className="relative">
         <div className={cn(
           'flex items-center gap-3 glass rounded-xl border px-4 py-3 transition-all',
-          aiMode ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' : 'border-white/10 hover:border-white/20'
+          aiMode ? 'border-accent/50 ring-1 ring-accent/20' : 'border-border hover:border-accent/20'
         )}>
           {aiMode
             ? <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
-            : <Search className="w-4 h-4 text-white/30 shrink-0" />
+            : <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           }
           <input
             value={aiQuery}
             onChange={e => { setAiQuery(e.target.value); if (!e.target.value) { setAiMode(false); clearFilters() } }}
             onKeyDown={handleAIKeyDown}
             placeholder={AI_SUGGESTIONS[suggestionIdx]}
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-white/20 outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none"
           />
           {aiQuery && (
-            <button onClick={clearAI} className="text-white/30 hover:text-white/70 transition-colors">
+            <button onClick={clearAI} className="text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -525,19 +525,19 @@ export default function Jobs() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex items-center gap-1 border-b border-white/8">
+      <div className="flex items-center gap-1 border-b border-border">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-all',
               tab === id
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-white/40 hover:text-white/70'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             )}>
             <Icon className="w-3.5 h-3.5" />
             {label}
             {id === 'recommended' && (
-              <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px]">
+              <span className="px-1.5 py-0.5 rounded-full bg-accent/20 text-accent text-[10px]">
                 {allJobs.filter(j => (j.match_score ?? 0) >= 80).length}
               </span>
             )}
@@ -586,20 +586,20 @@ export default function Jobs() {
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 glass rounded-2xl border border-indigo-500/30 px-5 py-3 flex items-center gap-4 shadow-2xl shadow-black/40"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 glass rounded-2xl border border-accent/30 px-5 py-3 flex items-center gap-4 shadow-2xl shadow-black/40"
           >
             <div className="flex items-center gap-2">
               <GitCompare className="w-4 h-4 text-indigo-400" />
-              <span className="text-sm text-white font-medium">{compareIds.size} jobs selected</span>
+              <span className="text-sm text-foreground font-medium">{compareIds.size} jobs selected</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-white/40">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {compareJobs.map(j => (
-                <span key={j.id} className="px-2 py-0.5 rounded bg-white/8 text-white/70">{j.title.slice(0, 20)}</span>
+                <span key={j.id} className="px-2 py-0.5 rounded bg-foreground/5 text-muted-foreground">{j.title.slice(0, 20)}</span>
               ))}
             </div>
             <button
               onClick={() => setCompareIds(new Set())}
-              className="text-xs text-white/40 hover:text-white/70 transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               Clear
             </button>
@@ -640,10 +640,10 @@ function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.8 }}
-      className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300"
+      className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-accent/15 border border-accent/30 text-accent"
     >
       {label}
-      <button onClick={onRemove} className="text-indigo-400/60 hover:text-indigo-300 transition-colors">
+      <button onClick={onRemove} className="text-accent/60 hover:text-accent transition-colors">
         <X className="w-2.5 h-2.5" />
       </button>
     </motion.span>
