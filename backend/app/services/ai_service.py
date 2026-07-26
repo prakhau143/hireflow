@@ -522,10 +522,13 @@ def _classify_application_type(job: dict, raw_block: str) -> str:
     return "none"
 
 
-def _normalize_job(job: dict, user, resume) -> None:
-    """Phases 6/8/9/10 + matching engine: taxonomies, canonical location, 100-pt score."""
+def _normalize_job(job: dict, user=None, resume=None) -> None:
+    """Phases 6/8/9/10: taxonomies, canonical location, experience parsing.
+    No longer scores against a user here — jobs are now globally-shared, so
+    matching happens per-viewer at review-approval / onboarding time instead
+    (see matching_service.sync_user_job_match). `user`/`resume` are accepted
+    but unused, kept so existing call sites don't need to change."""
     from app.services.taxonomy import canonical_skills, canonical_location, role_family
-    from app.services.matching_service import compute_match
 
     job["skills"] = canonical_skills(job.get("skills"))
     if job.get("location"):
@@ -536,16 +539,6 @@ def _normalize_job(job: dict, user, resume) -> None:
 
     exp_min, exp_max = _parse_experience(job.get("experience"))
     job["experience_min"], job["experience_max"] = exp_min, exp_max
-
-    match = compute_match(job, user, resume)
-    job["match_score"]       = match["score"]
-    job["match_tier"]        = match["tier"]
-    job["is_recommended"]    = match["recommended"]
-    job["experience_badge"]  = match["experience_badge"]
-    job["match_breakdown"]   = match["breakdown"]
-    job["matched_skills"]    = match["matched_skills"]
-    job["missing_skills"]    = match["missing_skills"]
-    job["score_suggestions"] = match["suggestions"]
 
 
 async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[dict], dict]:

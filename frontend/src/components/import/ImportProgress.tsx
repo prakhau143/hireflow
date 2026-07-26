@@ -151,7 +151,7 @@ export default function ImportProgress({ sessionId, onDone }: { sessionId: strin
             Reject All
           </button>
           <button onClick={() => reviewMutation.mutate('approved')}
-            className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium">
+            className="px-4 py-1.5 rounded-lg bg-success hover:bg-success/90 text-white text-xs font-medium">
             Approve & Publish All
           </button>
         </div>

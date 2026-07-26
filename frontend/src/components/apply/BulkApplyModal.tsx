@@ -167,7 +167,7 @@ export default function BulkApplyModal({ jobIds, onClose }: { jobIds: string[]; 
               <button
                 onClick={() => sendMutation.mutate()}
                 disabled={sendMutation.isPending}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50">
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors disabled:opacity-50">
                 {sendMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {sendMutation.isPending ? 'Queueing…'
                   : pkgs.length === 1 ? 'Send Application'

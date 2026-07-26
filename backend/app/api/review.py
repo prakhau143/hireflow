@@ -10,7 +10,8 @@ from app.database import get_db
 from app.models.user import User
 from app.models.job import Job
 from app.models.activity_log import ActivityLog
-from app.utils.auth import get_current_user
+from app.utils.auth import require_admin
+from app.services.matching_service import backfill_matches_for_new_job
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -39,7 +40,6 @@ def _serialize(j: Job) -> dict:
         "contact_email": j.contact_email, "contact_phone": j.contact_phone,
         "apply_link": j.apply_link, "salary": j.salary, "employment_type": j.employment_type,
         "experience_min": j.experience_min, "experience_max": j.experience_max,
-        "match_score": j.match_score, "match_tier": j.match_tier,
         "confidence_score": j.confidence_score, "application_type": j.application_type,
         "review_status": j.review_status, "import_session_id": j.import_session_id,
         "duplicate_reason": j.duplicate_reason,
@@ -58,11 +58,11 @@ async def review_jobs(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
 ):
-    """Paginated review queue. Only jobs that went through the import pipeline
-    (review_status set) appear here — manual/legacy rows are excluded."""
-    base = [Job.user_id == user.id, Job.review_status.isnot(None)]
+    """Paginated review queue — global across all admins. Only jobs that went through
+    the import pipeline (review_status set) appear here — manual/legacy rows are excluded."""
+    base = [Job.review_status.isnot(None)]
 
     tab_conditions = {
         "pending": [Job.review_status == "pending_review"],
@@ -110,14 +110,14 @@ class BulkRequest(BaseModel):
 
 
 @router.post("/bulk")
-async def bulk_action(body: BulkRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def bulk_action(body: BulkRequest, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     if body.action not in ("approve", "reject", "delete", "merge"):
         raise HTTPException(400, "action must be approve|reject|delete|merge")
     if not body.job_ids:
         raise HTTPException(400, "No jobs selected")
 
     rows = (await db.execute(
-        select(Job).where(Job.user_id == user.id, Job.id.in_(body.job_ids))
+        select(Job).where(Job.id.in_(body.job_ids))
     )).scalars().all()
     if not rows:
         raise HTTPException(404, "No matching jobs")
@@ -166,6 +166,11 @@ async def bulk_action(body: BulkRequest, db: AsyncSession = Depends(get_db), use
         description=f"{len(rows)} job(s) {new_status} via review panel",
     ))
     await db.commit()
+
+    if new_status == "approved":
+        for j in rows:
+            await backfill_matches_for_new_job(db, j)
+
     return {"action": body.action, "updated": len(rows)}
 
 
@@ -185,9 +190,9 @@ class ReviewEdit(BaseModel):
 
 
 @router.patch("/jobs/{job_id}")
-async def edit_job(job_id: str, body: ReviewEdit, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def edit_job(job_id: str, body: ReviewEdit, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     j = (await db.execute(
-        select(Job).where(Job.id == job_id, Job.user_id == user.id)
+        select(Job).where(Job.id == job_id)
     )).scalar_one_or_none()
     if not j:
         raise HTTPException(404, "Job not found")

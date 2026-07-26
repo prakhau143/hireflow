@@ -64,8 +64,10 @@ interface UserDetail {
   activity: { action: string; description: string; created_at: string }[]
 }
 
+// Import Jobs / Review Queue are admin-only (backend require_admin gate) — never
+// grantable to a regular user, so intentionally absent here (see Sidebar.tsx NAV_PERMISSIONS).
 const PERMISSION_KEYS = [
-  ['dashboard', 'Dashboard'], ['import', 'Import Jobs'], ['jobs', 'Jobs'], ['archives', 'Archives'],
+  ['dashboard', 'Dashboard'], ['jobs', 'Jobs'], ['archives', 'Archives'],
   ['smtp', 'SMTP'], ['resume', 'Resume'], ['analytics', 'Analytics'], ['templates', 'Templates'],
   ['logs', 'Activity Logs'], ['settings', 'Settings'],
 ] as const
@@ -335,22 +337,22 @@ export default function AdminUsers() {
           value={search}
           onChange={e => { setSearch(e.target.value); setOffset(0) }}
           placeholder="Search by name, email, or role…"
-          className="flex-1 min-w-[220px] glass rounded-xl border border-border bg-transparent px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-indigo-500/50 transition-colors"
+          className="flex-1 min-w-[220px] glass rounded-xl border border-border bg-transparent px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-accent/50 transition-colors"
         />
         <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setOffset(0) }}
-          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-accent/40 focus:outline-none">
           <option value="" className="bg-card">All roles</option>
           <option value="user" className="bg-card">User</option>
           <option value="admin" className="bg-card">Admin</option>
         </select>
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setOffset(0) }}
-          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-accent/40 focus:outline-none">
           <option value="" className="bg-card">All status</option>
           <option value="active" className="bg-card">Active</option>
           <option value="suspended" className="bg-card">Suspended</option>
         </select>
         <select value={sort} onChange={e => { setSort(e.target.value); setOffset(0) }}
-          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-accent/40 focus:outline-none">
           <option value="created_at" className="bg-card">Newest first</option>
           <option value="name" className="bg-card">Name</option>
           <option value="last_login" className="bg-card">Last active</option>
@@ -385,13 +387,13 @@ export default function AdminUsers() {
                 )}
               >
                 <button onClick={() => { setDrawerId(u.id); setPermDraft(null) }} className="flex items-center gap-3 min-w-0 text-left">
-                  <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center shrink-0 text-xs font-bold text-indigo-300">
+                  <div className="w-8 h-8 rounded-full bg-accent/30 border border-accent/30 flex items-center justify-center shrink-0 text-xs font-bold text-accent">
                     {u.avatar
                       ? <img src={u.avatar} alt={u.name} className="w-full h-full rounded-full object-cover" />
                       : u.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-white truncate flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
                       {u.name}
                       {u.role === 'admin' && <Shield className="w-3 h-3 text-yellow-400 shrink-0" />}
                     </p>
@@ -430,7 +432,7 @@ export default function AdminUsers() {
                       onChange={e => roleMutation.mutate({ userId: u.id, role: e.target.value })}
                       className={cn(
                         'appearance-none pl-2 pr-5 py-1 rounded-lg text-[10px] border cursor-pointer outline-none bg-transparent',
-                        u.role === 'admin' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' : 'text-muted-foreground border-white/15'
+                        u.role === 'admin' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' : 'text-muted-foreground border-border'
                       )}>
                       <option value="user" className="bg-card text-foreground">User</option>
                       <option value="admin" className="bg-card text-foreground">Admin</option>
@@ -472,12 +474,12 @@ export default function AdminUsers() {
       {/* Temp password modal (shown once) */}
       {tempPass && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setTempPass(null)}>
-          <div className="glass rounded-2xl border border-white/15 p-6 max-w-sm w-full text-center space-y-3" onClick={e => e.stopPropagation()}>
+          <div className="glass rounded-2xl border border-border p-6 max-w-sm w-full text-center space-y-3" onClick={e => e.stopPropagation()}>
             <h3 className="text-foreground font-semibold text-sm">Temporary Password</h3>
             <p className="text-muted-foreground text-xs">For {tempPass.email} — shown only once. Share it securely; user should change it after login.</p>
-            <p className="font-mono text-lg text-indigo-300 bg-indigo-500/10 border border-indigo-500/25 rounded-xl py-2.5 select-all">{tempPass.password}</p>
+            <p className="font-mono text-lg text-accent bg-accent/10 border border-accent/25 rounded-xl py-2.5 select-all">{tempPass.password}</p>
             <button onClick={() => { navigator.clipboard.writeText(tempPass.password); toast.success('Copied') }}
-              className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Copy & Close</button>
+              className="w-full py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-medium">Copy & Close</button>
           </div>
         </div>
       )}
@@ -493,14 +495,14 @@ export default function AdminUsers() {
             ) : (
               <>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-lg font-bold text-indigo-300">
+                  <div className="w-12 h-12 rounded-full bg-accent/30 border border-accent/30 flex items-center justify-center text-lg font-bold text-accent">
                     {detail.user.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-foreground font-semibold truncate">{detail.user.name}</p>
                     <p className="text-muted-foreground text-xs truncate">{detail.user.email}</p>
                   </div>
-                  <button onClick={() => setDrawerId(null)} className="text-muted-foreground hover:text-white text-xl leading-none">×</button>
+                  <button onClick={() => setDrawerId(null)} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
                 </div>
 
                 <div className="grid grid-cols-4 gap-2 text-center">
@@ -529,7 +531,7 @@ export default function AdminUsers() {
                       const checked = current.includes(key)
                       return (
                         <label key={key} className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                          <input type="checkbox" checked={checked} className="accent-indigo-500"
+                          <input type="checkbox" checked={checked} className="accent-accent"
                             onChange={() => {
                               const next = checked ? current.filter(k => k !== key) : [...current, key]
                               setPermDraft(next)
@@ -542,7 +544,7 @@ export default function AdminUsers() {
                   <div className="flex gap-2 mt-3">
                     <button onClick={() => permMutation.mutate({ userId: detail.user.id, permissions: permDraft })}
                       disabled={permDraft == null || permMutation.isPending}
-                      className="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium disabled:opacity-40">
+                      className="flex-1 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-medium disabled:opacity-40">
                       Save Access
                     </button>
                     <button onClick={() => { permMutation.mutate({ userId: detail.user.id, permissions: null }); setPermDraft(null) }}

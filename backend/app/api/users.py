@@ -8,6 +8,7 @@ from app.models.user import User
 from app.utils.auth import get_current_user, require_admin
 from app.models.activity_log import ActivityLog
 from app.models.resume import Resume
+from app.services.matching_service import backfill_matches_for_user
 from datetime import datetime, timezone, timedelta
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -164,6 +165,7 @@ async def complete_onboarding(
     db.add(log)
     await db.commit()
     await db.refresh(user)
+    await backfill_matches_for_user(db, user)
     return user
 
 
@@ -206,6 +208,7 @@ async def complete_onboarding_transaction(
         # Commit transaction
         await db.commit()
         await db.refresh(user)
+        await backfill_matches_for_user(db, user, resume)
 
         return {
             "success": True,
@@ -361,21 +364,23 @@ async def logout_all_devices(
 @router.post("/me/clear-ai-history")
 async def clear_ai_history(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """Wipe cached AI outputs: career insights + per-job AI analysis. Scores/matches are untouched."""
-    from app.models.job import Job
+    from app.models.user_job_match import UserJobMatch
     user.ai_career_insights = None
-    result = await db.execute(select(Job).where(Job.user_id == user.id, Job.ai_analysis.isnot(None)))
-    jobs = result.scalars().all()
-    for j in jobs:
-        j.ai_analysis = None
-    db.add(ActivityLog(user_id=user.id, action="AI History Cleared", description=f"Cleared career insights + {len(jobs)} cached job analyses"))
+    result = await db.execute(
+        select(UserJobMatch).where(UserJobMatch.user_id == user.id, UserJobMatch.ai_analysis.isnot(None))
+    )
+    matches = result.scalars().all()
+    for m in matches:
+        m.ai_analysis = None
+    db.add(ActivityLog(user_id=user.id, action="AI History Cleared", description=f"Cleared career insights + {len(matches)} cached job analyses"))
     await db.commit()
-    return {"cleared_jobs": len(jobs)}
+    return {"cleared_jobs": len(matches)}
 
 
 @router.get("/me/export-data")
 async def export_data(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """Full export of everything this account owns — GDPR-style data portability."""
-    from app.models.job import Job
+    from app.models.user_job_match import UserJobMatch
     from app.models.resume import Resume
     from app.models.application import Application
     from app.models.template import EmailTemplate
@@ -391,7 +396,7 @@ async def export_data(db: AsyncSession = Depends(get_db), user: User = Depends(g
             out.append(d)
         return out
 
-    jobs = (await db.execute(select(Job).where(Job.user_id == user.id))).scalars().all()
+    job_matches = (await db.execute(select(UserJobMatch).where(UserJobMatch.user_id == user.id))).scalars().all()
     resumes = (await db.execute(select(Resume).where(Resume.user_id == user.id))).scalars().all()
     apps = (await db.execute(select(Application).where(Application.user_id == user.id))).scalars().all()
     templates = (await db.execute(select(EmailTemplate).where(EmailTemplate.user_id == user.id))).scalars().all()
@@ -401,7 +406,7 @@ async def export_data(db: AsyncSession = Depends(get_db), user: User = Depends(g
     return {
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "profile": _rows([user], exclude=("hashed_password", "token_version"))[0],
-        "jobs": _rows(jobs),
+        "job_matches": _rows(job_matches),
         "resumes": _rows(resumes, exclude=("raw_text",)),
         "applications": _rows(apps),
         "templates": _rows(templates),
@@ -454,11 +459,13 @@ def _user_row(u: User, agg: dict) -> dict:
 
 
 async def _user_aggregates(db: AsyncSession) -> dict:
-    from app.models.job import Job
+    from app.models.user_job_match import UserJobMatch
     from app.models.application import Application
     from app.models.smtp import SmtpConfig
+    # "Jobs" in the admin table means jobs matched to this user, not imported by them
+    # — only admins import now, so an import-count would read ~0 for every regular user.
     jobs = dict((await db.execute(
-        select(Job.user_id, func.count()).group_by(Job.user_id))).all())
+        select(UserJobMatch.user_id, func.count()).group_by(UserJobMatch.user_id))).all())
     apps = dict((await db.execute(
         select(Application.user_id, func.count()).group_by(Application.user_id))).all())
     ats = dict((await db.execute(
@@ -677,6 +684,7 @@ async def check_readiness(user: User = Depends(get_current_user), db: AsyncSessi
 @router.get("/me/career-intelligence")
 async def career_intelligence(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     from app.models.job import Job
+    from app.models.user_job_match import UserJobMatch
     from app.models.resume import Resume
     from app.models.application import Application
     from app.services.profile_service import compute_health_score
@@ -685,7 +693,9 @@ async def career_intelligence(db: AsyncSession = Depends(get_db), user: User = D
         compute_recruiter_visibility, compute_career_health,
     )
 
-    jobs = (await db.execute(select(Job).where(Job.user_id == user.id))).scalars().all()
+    jobs = (await db.execute(
+        select(Job).join(UserJobMatch, UserJobMatch.job_id == Job.id).where(UserJobMatch.user_id == user.id)
+    )).scalars().all()
     best_resume = (await db.execute(
         select(Resume).where(Resume.user_id == user.id).order_by(Resume.ats_score.desc()).limit(1)
     )).scalar_one_or_none()
@@ -732,17 +742,17 @@ async def career_coach(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    from app.models.job import Job
     from app.models.resume import Resume
     from app.models.application import Application
     from app.services.profile_service import ask_career_coach
+    from app.services.analytics_service import _user_jobs
 
     if not body.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
-    top_jobs = (await db.execute(
-        select(Job).where(Job.user_id == user.id).order_by(Job.match_score.desc()).limit(5)
-    )).scalars().all()
+    top_jobs = sorted(
+        await _user_jobs(db, user.id), key=lambda j: j.match_score or 0, reverse=True
+    )[:5]
     best_resume = (await db.execute(
         select(Resume).where(Resume.user_id == user.id).order_by(Resume.ats_score.desc()).limit(1)
     )).scalar_one_or_none()

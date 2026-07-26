@@ -14,7 +14,6 @@ interface ReviewJob {
   skills: string[]; contact_email: string | null; contact_phone: string | null
   apply_link: string | null; salary: string | null; employment_type: string | null
   experience_min: number; experience_max: number
-  match_score: number | null; match_tier: string | null
   confidence_score: number | null; application_type: string | null
   review_status: string; import_session_id: string | null
   duplicate_reason: string | null; validation_warnings: string[]
@@ -125,7 +124,7 @@ export default function ReviewPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-indigo-400" /> Import Review
+            <ShieldCheck className="w-6 h-6 text-accent" /> Import Review
           </h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             Imported jobs go live only after approval — review quality, contacts and duplicates here
@@ -141,12 +140,12 @@ export default function ReviewPanel() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all',
               tab === t.id
-                ? 'bg-indigo-500/25 text-indigo-300 border-indigo-500/40'
+                ? 'bg-accent/25 text-accent border-accent/40'
                 : 'glass text-muted-foreground border-border hover:text-foreground/85 hover:border-accent/30'
             )}>
             {t.label}
             <span className={cn('px-1.5 py-0.5 rounded-full text-[10px] font-bold',
-              tab === t.id ? 'bg-indigo-500/30 text-indigo-200' : 'bg-foreground/5 text-muted-foreground')}>
+              tab === t.id ? 'bg-accent/30 text-accent' : 'bg-foreground/5 text-muted-foreground')}>
               {counts[t.id] ?? 0}
             </span>
           </button>
@@ -159,10 +158,10 @@ export default function ReviewPanel() {
           <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
           <input value={q} onChange={e => { setQ(e.target.value); setOffset(0) }}
             placeholder="Search title or company…"
-            className="w-full glass rounded-xl pl-9 pr-3 py-2.5 text-sm text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none" />
+            className="w-full glass rounded-xl pl-9 pr-3 py-2.5 text-sm text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-accent/40 focus:outline-none" />
         </div>
         <select value={appType} onChange={e => { setAppType(e.target.value); setOffset(0) }}
-          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none">
+          className="glass rounded-xl px-3 py-2.5 text-sm text-muted-foreground border border-border focus:border-accent/40 focus:outline-none">
           <option value="" className="bg-card">All apply types</option>
           {['email', 'google_form', 'linkedin', 'portal', 'phone', 'none'].map(t => (
             <option key={t} value={t} className="bg-card">{t.replace('_', ' ')}</option>
@@ -174,10 +173,10 @@ export default function ReviewPanel() {
       <AnimatePresence>
         {selected.size > 0 && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="glass rounded-xl border border-indigo-500/30 px-4 py-2.5 flex flex-wrap items-center gap-2">
+            className="glass rounded-xl border border-accent/30 px-4 py-2.5 flex flex-wrap items-center gap-2">
             <span className="text-sm text-foreground/80 font-medium mr-2">{selected.size} selected</span>
             <button onClick={() => bulkMutation.mutate({ ids: [...selected], action: 'approve' })}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium">
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success hover:bg-success/90 text-white text-xs font-medium">
               <CheckCircle className="w-3 h-3" /> Approve
             </button>
             <button onClick={() => bulkMutation.mutate({ ids: [...selected], action: 'reject' })}
@@ -201,10 +200,9 @@ export default function ReviewPanel() {
       {/* Job list */}
       <div className="glass rounded-2xl border border-border overflow-hidden">
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border text-[11px] text-muted-foreground uppercase tracking-wider">
-          <input type="checkbox" checked={allChecked} onChange={toggleAll} className="accent-indigo-500" />
+          <input type="checkbox" checked={allChecked} onChange={toggleAll} className="accent-accent" />
           <span className="flex-1">Job</span>
           <span className="w-20 text-center">Confidence</span>
-          <span className="w-16 text-center">Match</span>
           <span className="w-24 text-center hidden md:block">Apply Via</span>
           <span className="w-28 text-right">Actions</span>
         </div>
@@ -221,7 +219,7 @@ export default function ReviewPanel() {
             {items.map((j, i) => (
               <motion.div key={j.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
                 <div className="flex items-center gap-3 px-4 py-3 hover:bg-foreground/[0.02]">
-                  <input type="checkbox" checked={selected.has(j.id)} onChange={() => toggle(j.id)} className="accent-indigo-500" />
+                  <input type="checkbox" checked={selected.has(j.id)} onChange={() => toggle(j.id)} className="accent-accent" />
                   <button onClick={() => setExpanded(expanded === j.id ? null : j.id)} className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
                       <p className="text-foreground/85 text-sm font-medium truncate">{j.title}</p>
@@ -250,7 +248,6 @@ export default function ReviewPanel() {
                   <span className={cn('w-20 text-center text-sm font-bold tabular-nums', confColor(j.confidence_score))}>
                     {j.confidence_score ?? '—'}%
                   </span>
-                  <span className="w-16 text-center text-sm text-muted-foreground tabular-nums">{Math.round(j.match_score ?? 0)}%</span>
                   <span className="w-24 text-center hidden md:block">
                     {j.application_type && (
                       <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full border', APP_TYPE_STYLE[j.application_type] ?? '')}>
@@ -338,11 +335,11 @@ export default function ReviewPanel() {
                   <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</label>
                   <input value={(editing as any)[key] ?? ''}
                     onChange={e => setEditing({ ...editing, [key]: e.target.value })}
-                    className="w-full glass rounded-lg px-3 py-2 text-sm text-foreground/85 border border-border focus:border-indigo-500/40 focus:outline-none" />
+                    className="w-full glass rounded-lg px-3 py-2 text-sm text-foreground/85 border border-border focus:border-accent/40 focus:outline-none" />
                 </div>
               ))}
               <button onClick={() => editMutation.mutate(editing)} disabled={editMutation.isPending}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium disabled:opacity-50">
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium disabled:opacity-50">
                 <Save className="w-4 h-4" /> {editMutation.isPending ? 'Saving…' : 'Save Changes'}
               </button>
             </motion.div>

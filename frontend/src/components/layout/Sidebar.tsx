@@ -9,10 +9,10 @@ import { useAppStore } from '@/store/useAppStore'
 import { cn } from '@/lib/utils'
 
 // key = permission identifier stored per-user in the DB (users.permissions)
+// Import Jobs / Review Queue are admin-only (backend require_admin gate) — never
+// grantable to a regular user, so they're intentionally absent from this list.
 export const NAV_PERMISSIONS = [
   { key: 'dashboard', label: 'Dashboard' },
-  { key: 'import', label: 'Import Jobs' },
-  { key: 'review', label: 'Review Queue' },
   { key: 'jobs', label: 'Jobs' },
   { key: 'archives', label: 'Archives' },
   { key: 'smtp', label: 'SMTP' },
@@ -25,8 +25,6 @@ export const NAV_PERMISSIONS = [
 
 const userNav = [
   { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', to: '/' },
-  { key: 'import', icon: Import, label: 'Import Jobs', to: '/import' },
-  { key: 'review', icon: ShieldCheck, label: 'Review Queue', to: '/review' },
   { key: 'jobs', icon: Briefcase, label: 'Jobs', to: '/jobs' },
   { key: 'archives', icon: Archive, label: 'Archives', to: '/archives' },
   { key: 'smtp', icon: Mail, label: 'SMTP', to: '/smtp' },

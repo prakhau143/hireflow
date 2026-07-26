@@ -496,7 +496,7 @@ function PrivacyTab({ onLogout }: { onLogout: () => void }) {
               className="w-full max-w-xs glass rounded-xl px-3 py-2 text-sm text-foreground/80 placeholder:text-muted-foreground border border-red-500/25 focus:outline-none" />
             <div className="flex gap-2">
               <button onClick={() => deleteAccount.mutate()} disabled={!password || deleteAccount.isPending}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-medium disabled:opacity-40">
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-danger hover:bg-danger/90 text-white text-xs font-medium disabled:opacity-40">
                 {deleteAccount.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Permanently Delete
               </button>
               <button onClick={() => { setConfirmOpen(false); setPassword('') }} className="px-4 py-2 rounded-xl border border-border text-muted-foreground text-xs hover:text-foreground">

@@ -23,7 +23,7 @@ function fitInfo(score: number) {
   return { label: 'Weak Match', desc: 'Consider similar roles',   color: 'text-red-400',    bg: 'bg-red-500/10 border-red-500/25' }
 }
 
-function Section({ title, icon: Icon, iconColor = 'text-indigo-400', badge, children, defaultOpen = true }:
+function Section({ title, icon: Icon, iconColor = 'text-accent', badge, children, defaultOpen = true }:
   { title: string; icon: any; iconColor?: string; badge?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
@@ -282,7 +282,7 @@ export default function JobDetail() {
         <div className="border-t border-border px-6 py-3.5 flex items-center gap-2 flex-wrap">
           {job.contact_email && (
             <motion.a href={`mailto:${job.contact_email}`} whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors">
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors">
               <Send className="w-4 h-4" /> Apply via Email
             </motion.a>
           )}
@@ -357,11 +357,11 @@ export default function JobDetail() {
                   </div>
                   <p className="text-foreground/80 text-sm leading-relaxed">{ai.summary}</p>
                   {ai.experience_analysis && (
-                    <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-indigo-500/30 pl-3">{ai.experience_analysis}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-accent/30 pl-3">{ai.experience_analysis}</p>
                   )}
                   {ai.career_advice && (
-                    <div className="p-3 rounded-xl bg-indigo-500/8 border border-indigo-500/15">
-                      <p className="text-xs text-indigo-400 font-medium mb-1 flex items-center gap-1.5">
+                    <div className="p-3 rounded-xl bg-accent/8 border border-accent/15">
+                      <p className="text-xs text-accent font-medium mb-1 flex items-center gap-1.5">
                         <Zap className="w-3 h-3" /> Career Advice
                       </p>
                       <p className="text-xs text-muted-foreground leading-relaxed">{ai.career_advice}</p>
@@ -651,7 +651,7 @@ export default function JobDetail() {
               <div className="space-y-3">
                 {job.contact_email && (
                   <a href={`mailto:${job.contact_email}`}
-                    className="flex items-center gap-3 text-sm text-muted-foreground hover:text-indigo-400 transition-colors">
+                    className="flex items-center gap-3 text-sm text-muted-foreground hover:text-accent transition-colors">
                     <Mail className="w-4 h-4" />{job.contact_email}
                   </a>
                 )}
@@ -727,7 +727,7 @@ export default function JobDetail() {
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
             className="glass rounded-2xl border border-border p-5 space-y-3">
             <h3 className="text-foreground font-medium text-sm flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-indigo-400" /> Success Probability
+              <TrendingUp className="w-4 h-4 text-accent" /> Success Probability
               {ai?.probabilities && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/25 text-purple-400 font-medium">AI</span>
               )}
@@ -785,12 +785,12 @@ export default function JobDetail() {
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
               className="glass rounded-2xl border border-border p-5">
               <h3 className="text-foreground font-medium text-sm flex items-center gap-2 mb-3">
-                <Target className="w-4 h-4 text-indigo-400" /> Requirements
+                <Target className="w-4 h-4 text-accent" /> Requirements
               </h3>
               <ul className="space-y-1.5">
                 {job.experience_min != null && (
                   <li className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400/50 shrink-0" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent/50 shrink-0" />
                     {job.experience_min}–{job.experience_max} years experience
                   </li>
                 )}

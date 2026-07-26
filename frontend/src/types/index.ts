@@ -95,7 +95,7 @@ export interface Job {
   is_recommended?: boolean
   experience_badge?: string
   match_tier?: string
-  match_breakdown?: { key: string; label: string; score: number; max: number; available: boolean }[]
+  match_breakdown?: { key: string; label: string; score: number; max: number; available: boolean; pct: number }[]
   score_suggestions?: { skill: string; projected: number; gain: number }[]
   status: 'new' | 'applied' | 'archived' | 'shortlisted'
   archive_reason?: 'low_match' | 'missing_experience' | 'missing_skills' | 'expired'

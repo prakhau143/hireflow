@@ -13,10 +13,10 @@ import ProfileGapSuggestions from '@/components/resume/ProfileGapSuggestions'
 
 function HealthWidget({ label, score, highlight = false }: { label: string; score: number; highlight?: boolean }) {
   const color = score >= 90 ? 'text-emerald-400' : score >= 75 ? 'text-yellow-400' : 'text-red-400'
-  const bgColor = highlight ? 'bg-indigo-500/20 border-indigo-500/30' : 'bg-foreground/5 border-border'
-  
+  const bgColor = highlight ? 'bg-accent/20 border-accent/30' : 'bg-foreground/5 border-border'
+
   return (
-    <div className={cn('glass rounded-xl border p-3 text-center', bgColor, highlight && 'ring-2 ring-indigo-500/20')}>
+    <div className={cn('glass rounded-xl border p-3 text-center', bgColor, highlight && 'ring-2 ring-accent/20')}>
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
       <p className={cn('text-xl font-bold', color)}>{score}</p>
     </div>
@@ -158,7 +158,7 @@ export default function ResumeManager() {
             action={
               <button
                 onClick={() => qc.invalidateQueries({ queryKey: ['resumes'] })}
-                className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+                className="mt-4 px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors"
               >
                 Retry
               </button>
@@ -190,14 +190,14 @@ export default function ResumeManager() {
                       className={cn(
                         'w-full text-left p-3 rounded-xl border transition-all',
                         selectedId === latestResume.id
-                          ? 'glass border-indigo-500/30 bg-indigo-500/10'
+                          ? 'glass border-accent/30 bg-accent/10'
                           : 'glass border-border hover:border-accent/30'
                       )}
                     >
                       <div className="flex items-center gap-2.5">
-                        <FileText className={cn('w-4 h-4 shrink-0', selectedId === latestResume.id ? 'text-indigo-400' : 'text-muted-foreground')} />
+                        <FileText className={cn('w-4 h-4 shrink-0', selectedId === latestResume.id ? 'text-accent' : 'text-muted-foreground')} />
                         <div className="min-w-0">
-                          <p className={cn('text-sm font-medium truncate', selectedId === latestResume.id ? 'text-indigo-300' : 'text-foreground/80')}>
+                          <p className={cn('text-sm font-medium truncate', selectedId === latestResume.id ? 'text-accent' : 'text-foreground/80')}>
                             {latestResume.name}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">ATS: {latestResume.ats_score ?? '—'}/100</p>
@@ -329,7 +329,7 @@ export default function ResumeManager() {
 
                 {analyzingJob ? (
                   <div className="glass rounded-2xl border border-border p-8 text-center">
-                    <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4" />
+                    <div className="w-12 h-12 border-4 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />
                     <p className="text-muted-foreground">Analyzing resume for {selectedJob}...</p>
                   </div>
                 ) : jobAnalysis ? (

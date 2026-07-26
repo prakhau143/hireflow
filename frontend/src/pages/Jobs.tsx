@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, LayoutGrid, List, Briefcase, X, ChevronDown,
   Sparkles, Import, TrendingUp, Clock, MapPin, Star, GitCompare,
-  Zap, SlidersHorizontal, CheckCircle2, Wifi
+  Zap, SlidersHorizontal, CheckCircle2, Wifi, GraduationCap, Hourglass
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -158,13 +158,33 @@ function FilterOption({ label, active, onClick }: { label: string; active: boole
 }
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
-const TABS = [
-  { id: 'all',           label: 'All Jobs',     icon: Briefcase },
-  { id: 'recommended',   label: 'Recommended',  icon: Star },
-  { id: 'remote',        label: 'Remote',       icon: Wifi },
-  { id: 'trending',      label: 'Trending',     icon: TrendingUp },
-  { id: 'recent',        label: 'Recent',       icon: Clock },
+// Regular users never see an undifferentiated "All Jobs" list — every job is bucketed
+// by experience-fit + skill-fit first. Admins keep "All Jobs" to audit the raw pool.
+const USER_TABS = [
+  { id: 'recommended',   label: 'Recommended',   icon: Star },
+  { id: 'need_learning', label: 'Need Learning', icon: GraduationCap },
+  { id: 'future_fit',    label: 'Future Fit',    icon: Hourglass },
+  { id: 'remote',        label: 'Remote',        icon: Wifi },
+  { id: 'trending',      label: 'Trending',      icon: TrendingUp },
+  { id: 'recent',        label: 'Recent',        icon: Clock },
 ]
+const ADMIN_TABS = [{ id: 'all', label: 'All Jobs', icon: Briefcase }, ...USER_TABS]
+
+// A job's experience fit is "compatible" once it clears the matching engine's own
+// hard-cap threshold (matching_service._experience_score: exp_frac >= 0.85). Below
+// that, the engine already caps the overall score and sets a descriptive
+// experience_badge ("Growth Opportunity — N yrs short") — Future Fit surfaces that
+// instead of hiding the job or saying "Don't Apply".
+function experienceCompatible(j: Job): boolean {
+  const exp = j.match_breakdown?.find(b => b.key === 'experience')
+  // No experience data (e.g. profile incomplete) → don't penalize, matching the
+  // engine's own rule that components without data never count against the candidate.
+  if (!exp || !exp.available) return true
+  return exp.pct >= 85
+}
+function skillFitPct(j: Job): number {
+  return j.match_breakdown?.find(b => b.key === 'skills')?.pct ?? 0
+}
 
 const EXP_OPTS = ['Fresher', '1+', '2+', '3+', '5+', '8+']
 const LOC_OPTS  = [{ v: 'remote', l: 'Remote' }, { v: 'hybrid', l: 'Hybrid' }, { v: 'onsite', l: 'Onsite' }]
@@ -209,7 +229,7 @@ function CompareModal({ jobs, onClose }: { jobs: Job[]; onClose: () => void }) {
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-foreground font-bold text-lg flex items-center gap-2">
-            <GitCompare className="w-5 h-5 text-indigo-400" /> Compare Jobs
+            <GitCompare className="w-5 h-5 text-accent" /> Compare Jobs
           </h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
@@ -252,7 +272,7 @@ function CompareModal({ jobs, onClose }: { jobs: Job[]; onClose: () => void }) {
             <Link
               key={j.id}
               to={`/jobs/${j.id}`}
-              className="text-center text-xs py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+              className="text-center text-xs py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground transition-colors"
             >
               View Details
             </Link>
@@ -266,7 +286,7 @@ function CompareModal({ jobs, onClose }: { jobs: Job[]; onClose: () => void }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function Jobs() {
   const [view, setView]           = useState<'grid' | 'list'>('grid')
-  const [tab, setTab]             = useState('all')
+  const [tab, setTab]             = useState('recommended')
   const [aiQuery, setAiQuery]     = useState('')
   const [aiMode, setAiMode]       = useState(false)
   const [sortBy, setSortBy]       = useState('Best Match')
@@ -274,7 +294,9 @@ export default function Jobs() {
   const [showCompare, setShowCompare] = useState(false)
   const [showBulkApply, setShowBulkApply] = useState(false)
   const [suggestionIdx, setSuggestionIdx] = useState(0)
-  const { filters, setFilters, clearFilters } = useAppStore()
+  const { filters, setFilters, clearFilters, user } = useAppStore()
+  const isAdmin = user?.role === 'admin'
+  const TABS = isAdmin ? ADMIN_TABS : USER_TABS
 
   // Cycle placeholder suggestions
   useEffect(() => {
@@ -295,18 +317,25 @@ export default function Jobs() {
     },
   })
 
+  // Below a 40% match the job is never worth showing a regular user, and archived
+  // jobs (auto or manual) belong on the dedicated Archives page, not here.
+  const visibleJobs = isAdmin ? allJobs : allJobs.filter(j => (j.match_score ?? 0) >= 40 && j.status !== 'archived')
+  const recommendedJobs = visibleJobs.filter(j => experienceCompatible(j) && skillFitPct(j) > 60)
+  const needLearningJobs = visibleJobs.filter(j => experienceCompatible(j) && skillFitPct(j) <= 60)
+  const futureFitJobs = visibleJobs.filter(j => !experienceCompatible(j))
+
   // Tab + skill + sort filtering (client-side)
   const filtered = (() => {
-    let jobs = [...allJobs]
+    let jobs = [...visibleJobs]
     if (tab === 'remote') jobs = jobs.filter(j => j.location_type === 'remote')
-    if (tab === 'recommended') {
-      // Hard rule: only engine-recommended jobs (exp>75 & skills>65 & overall>80).
-      // Jobs imported before the v2 engine fall back to a 80+ score check.
-      jobs = jobs
-        .filter(j => j.is_recommended ?? ((j.match_score ?? 0) > 80))
-        .sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
-        .slice(0, 20)
-    }
+    // Experience-compatible + skill fit >60% predicts whether applying is worth the
+    // candidate's time; experience-incompatible jobs go to Future Fit instead of
+    // being hidden or told "Don't Apply" (the card's experience_badge already reads
+    // "Growth Opportunity — N yrs short"); score_suggestions has the per-skill
+    // learning-time estimate for Need Learning jobs.
+    if (tab === 'recommended') jobs = [...recommendedJobs].sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
+    if (tab === 'need_learning') jobs = [...needLearningJobs].sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
+    if (tab === 'future_fit') jobs = [...futureFitJobs].sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
     if (tab === 'recent') jobs = jobs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     if (tab === 'trending') jobs = jobs.filter(j => (j.match_score ?? 0) >= 70)
     if (filters.skills?.length) {
@@ -383,12 +412,14 @@ export default function Jobs() {
               </button>
             ))}
           </div>
-          <Link to="/import">
-            <motion.span whileTap={{ scale: 0.96 }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors cursor-pointer">
-              <Import className="w-4 h-4" /> Import Jobs
-            </motion.span>
-          </Link>
+          {isAdmin && (
+            <Link to="/import">
+              <motion.span whileTap={{ scale: 0.96 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors cursor-pointer">
+                <Import className="w-4 h-4" /> Import Jobs
+              </motion.span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -399,7 +430,7 @@ export default function Jobs() {
           aiMode ? 'border-accent/50 ring-1 ring-accent/20' : 'border-border hover:border-accent/20'
         )}>
           {aiMode
-            ? <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+            ? <Sparkles className="w-4 h-4 text-accent shrink-0" />
             : <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           }
           <input
@@ -417,14 +448,14 @@ export default function Jobs() {
           <button
             onClick={handleAISearch}
             disabled={!aiQuery.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-medium transition-colors disabled:opacity-40"
           >
             <Sparkles className="w-3 h-3" /> Search
           </button>
         </div>
         {aiMode && (
           <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            className="absolute -bottom-1 left-4 translate-y-full mt-1 text-xs text-indigo-400/70 flex items-center gap-1.5 pt-1">
+            className="absolute -bottom-1 left-4 translate-y-full mt-1 text-xs text-accent/70 flex items-center gap-1.5 pt-1">
             <Zap className="w-3 h-3" /> AI parsed your query into filters below
           </motion.div>
         )}
@@ -536,9 +567,9 @@ export default function Jobs() {
             )}>
             <Icon className="w-3.5 h-3.5" />
             {label}
-            {id === 'recommended' && (
+            {(id === 'recommended' || id === 'need_learning' || id === 'future_fit') && (
               <span className="px-1.5 py-0.5 rounded-full bg-accent/20 text-accent text-[10px]">
-                {allJobs.filter(j => (j.match_score ?? 0) >= 80).length}
+                {id === 'recommended' ? recommendedJobs.length : id === 'need_learning' ? needLearningJobs.length : futureFitJobs.length}
               </span>
             )}
           </button>
@@ -552,14 +583,25 @@ export default function Jobs() {
         <EmptyState icon={Briefcase} title="Failed to load jobs"
           description="Could not connect to the server. Make sure the backend is running." />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Briefcase} title="No jobs found"
-          description="Import LinkedIn or WhatsApp job posts to start building your board."
-          action={
-            <Link to="/import" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors">
-              <Import className="w-4 h-4" /> Import Jobs
-            </Link>
-          }
-        />
+        isAdmin ? (
+          <EmptyState icon={Briefcase} title="No jobs found"
+            description="Import LinkedIn or WhatsApp job posts to start building the board."
+            action={
+              <Link to="/import" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors">
+                <Import className="w-4 h-4" /> Import Jobs
+              </Link>
+            }
+          />
+        ) : (
+          <EmptyState icon={Briefcase} title="No jobs found"
+            description="No approved jobs match your filters yet — new jobs are reviewed and published regularly. Try widening your filters or completing your profile for better matches."
+            action={
+              <Link to="/profile" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors">
+                Complete Profile
+              </Link>
+            }
+          />
+        )
       ) : (
         <motion.div layout className={cn(
           view === 'grid'
@@ -589,7 +631,7 @@ export default function Jobs() {
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 glass rounded-2xl border border-accent/30 px-5 py-3 flex items-center gap-4 shadow-2xl shadow-black/40"
           >
             <div className="flex items-center gap-2">
-              <GitCompare className="w-4 h-4 text-indigo-400" />
+              <GitCompare className="w-4 h-4 text-accent" />
               <span className="text-sm text-foreground font-medium">{compareIds.size} jobs selected</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -605,7 +647,7 @@ export default function Jobs() {
             </button>
             <button
               onClick={() => setShowCompare(true)}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-medium transition-colors"
             >
               Compare Now →
             </button>

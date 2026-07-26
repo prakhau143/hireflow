@@ -129,11 +129,11 @@ async def run_import(session_id: str):
             )
             return
 
-        # ── Stage: dedupe against existing DB jobs ──────────────────────────
+        # ── Stage: dedupe against existing DB jobs (global pool, not just this admin's) ──
         await _update(session_id, status="deduplication", stats=dict(stats))
         async with AsyncSessionLocal() as db:
             rows = (await db.execute(
-                select(Job.title, Job.company, Job.location, Job.contact_email).where(Job.user_id == user_id)
+                select(Job.title, Job.company, Job.location, Job.contact_email)
             )).all()
         existing = [
             " | ".join((x or "").lower().strip() for x in r) for r in rows
@@ -164,21 +164,12 @@ async def run_import(session_id: str):
                     skills=job.get("skills") or [], description=job.get("description") or "",
                     contact_email=job.get("email"), contact_phone=job.get("phone"),
                     salary=job.get("salary"), employment_type=job.get("employment_type"),
-                    match_score=float(job.get("match_score") or 0),
-                    matched_skills=job.get("matched_skills") or [],
-                    missing_skills=job.get("missing_skills") or [],
-                    match_tier=job.get("match_tier"),
                     application_type=job.get("application_type"),
-                    is_recommended=bool(job.get("is_recommended")),
-                    experience_badge=job.get("experience_badge"),
-                    match_breakdown=job.get("match_breakdown"),
-                    score_suggestions=job.get("score_suggestions"),
                     hiring_manager=job.get("recruiter"),
                     ai_summary=job.get("description"),
                     confidence_score=int(job.get("confidence_score") or 0),
                     smart_tags=job.get("smart_tags") or [],
                     apply_link=job.get("apply_link"), source=source,
-                    status="new",
                     review_status="pending_review",
                     import_session_id=session_id,
                     duplicate_reason=None,

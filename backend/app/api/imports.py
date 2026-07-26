@@ -8,8 +8,9 @@ from app.database import get_db
 from app.models.user import User
 from app.models.job import Job
 from app.models.import_session import ImportSession, STAGES
-from app.utils.auth import get_current_user
+from app.utils.auth import require_admin
 from app.services.import_service import spawn_import
+from app.services.matching_service import backfill_matches_for_new_job
 
 router = APIRouter(prefix="/imports", tags=["imports"])
 
@@ -55,7 +56,7 @@ def _serialize(s: ImportSession) -> dict:
 
 
 @router.post("/start")
-async def start_import(body: StartRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def start_import(body: StartRequest, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     if not body.text.strip():
         raise HTTPException(400, "No text provided")
     running = (await db.execute(
@@ -75,7 +76,7 @@ async def start_import(body: StartRequest, db: AsyncSession = Depends(get_db), u
 
 
 @router.get("/")
-async def history(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def history(db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     rows = (await db.execute(
         select(ImportSession).where(ImportSession.user_id == user.id)
         .order_by(ImportSession.created_at.desc()).limit(25)
@@ -84,7 +85,7 @@ async def history(db: AsyncSession = Depends(get_db), user: User = Depends(get_c
 
 
 @router.get("/{sid}/status")
-async def status(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def status(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     s = (await db.execute(select(ImportSession).where(
         ImportSession.id == sid, ImportSession.user_id == user.id))).scalar_one_or_none()
     if not s:
@@ -93,7 +94,7 @@ async def status(sid: str, db: AsyncSession = Depends(get_db), user: User = Depe
 
 
 @router.post("/{sid}/cancel")
-async def cancel(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def cancel(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     s = (await db.execute(select(ImportSession).where(
         ImportSession.id == sid, ImportSession.user_id == user.id))).scalar_one_or_none()
     if not s:
@@ -106,7 +107,7 @@ async def cancel(sid: str, db: AsyncSession = Depends(get_db), user: User = Depe
 
 
 @router.post("/{sid}/retry")
-async def retry(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def retry(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     s = (await db.execute(select(ImportSession).where(
         ImportSession.id == sid, ImportSession.user_id == user.id))).scalar_one_or_none()
     if not s:
@@ -126,7 +127,7 @@ async def retry(sid: str, db: AsyncSession = Depends(get_db), user: User = Depen
 
 
 @router.get("/{sid}/jobs")
-async def session_jobs(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def session_jobs(sid: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     rows = (await db.execute(select(Job).where(
         Job.user_id == user.id, Job.import_session_id == sid))).scalars().all()
     return rows
@@ -138,7 +139,7 @@ class ReviewRequest(BaseModel):
 
 
 @router.post("/{sid}/review")
-async def review(sid: str, body: ReviewRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def review(sid: str, body: ReviewRequest, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
     """Publish (or reject) pending jobs from a session — jobs go live only here."""
     if body.decision not in ("approved", "rejected"):
         raise HTTPException(400, "decision must be approved|rejected")
@@ -149,4 +150,9 @@ async def review(sid: str, body: ReviewRequest, db: AsyncSession = Depends(get_d
     for j in rows:
         j.review_status = body.decision
     await db.commit()
+
+    if body.decision == "approved":
+        for j in rows:
+            await backfill_matches_for_new_job(db, j)
+
     return {"updated": len(rows), "decision": body.decision}

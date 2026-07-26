@@ -2,13 +2,13 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import event
 from app.config import settings
-import sqlite3
 
+IS_SQLITE = "sqlite" in settings.DATABASE_URL
 
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
+    connect_args={"check_same_thread": False} if IS_SQLITE else {},
 )
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -17,10 +17,13 @@ class Base(DeclarativeBase):
     pass
 
 
-# Enable WAL mode + foreign keys for SQLite
-@event.listens_for(engine.sync_engine, "connect")
-def set_sqlite_pragmas(dbapi_conn, _):
-    if isinstance(dbapi_conn, sqlite3.Connection):
+# Enable WAL mode + foreign keys for SQLite. The async aiosqlite driver wraps
+# connections in AsyncAdapt_aiosqlite_connection (not sqlite3.Connection), so
+# gate on the dialect instead of isinstance — a raw-type check here silently
+# never fires and both pragmas go dead.
+if IS_SQLITE:
+    @event.listens_for(engine.sync_engine, "connect")
+    def set_sqlite_pragmas(dbapi_conn, _):
         cur = dbapi_conn.cursor()
         cur.execute("PRAGMA journal_mode=WAL")
         cur.execute("PRAGMA foreign_keys=ON")

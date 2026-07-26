@@ -235,7 +235,7 @@ export default function ImportJobs() {
               whileTap={{ scale: 0.97 }}
               onClick={handleSave}
               disabled={saveMutation.isPending || selected.size === 0}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-60"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors disabled:opacity-60"
             >
               {saveMutation.isPending
                 ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving...</>
@@ -290,7 +290,7 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                   whileTap={{ scale: 0.97 }}
                   onClick={handleAnalyze}
                   disabled={!text.trim()}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl glass border border-indigo-500/30 text-indigo-300 text-sm font-medium hover:bg-indigo-500/10 transition-colors disabled:opacity-60"
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl glass border border-accent/30 text-accent text-sm font-medium hover:bg-accent/10 transition-colors disabled:opacity-60"
                 >
                   <Sparkles className="w-4 h-4" /> Quick Parse
                 </motion.button>
@@ -299,7 +299,7 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                   onClick={handleBackgroundImport}
                   disabled={!text.trim() || bgStartMutation.isPending || !!bgSessionId}
                   title={bgSessionId ? 'An import is already running' : 'Runs in background — you can navigate away'}
-                  className="flex items-center gap-2 px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-60"
+                  className="flex items-center gap-2 px-6 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors disabled:opacity-60"
                 >
                   <Zap className="w-4 h-4" />
                   {bgStartMutation.isPending ? 'Starting…' : 'Background Import'}
@@ -316,8 +316,8 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                 { icon: Save,           label: '4. Save & Track', desc: 'Matched jobs to your board' },
               ].map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="glass rounded-xl border border-border p-4 flex gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-600/20 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4 text-indigo-400" />
+                  <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-accent" />
                   </div>
                   <div>
                     <p className="text-xs font-medium text-foreground">{label}</p>
@@ -354,7 +354,7 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                       </div>
                       <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden">
                         <motion.div
-                          className={cn('h-full rounded-full', isDone ? 'bg-emerald-500' : 'bg-indigo-500')}
+                          className={cn('h-full rounded-full', isDone ? 'bg-emerald-500' : 'bg-accent')}
                           animate={{ width: isDone ? '100%' : isActive ? `${stageProgress}%` : '0%' }}
                           transition={{ duration: 0.3 }}
                         />
@@ -380,7 +380,7 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                 {/* Source + select controls */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <SourceIcon className="w-4 h-4 text-indigo-400" />
+                    <SourceIcon className="w-4 h-4 text-accent" />
                     <span className="text-foreground/80 font-medium">{sourceLabel} Import</span>
                     <span className="text-muted-foreground/60">·</span>
                     <span className="text-muted-foreground text-xs">Enterprise Validation Pipeline</span>
@@ -498,7 +498,7 @@ Paste hundreds of mixed messages — the pipeline filters noise automatically.`}
                 </div>
               )}
 
-              <button onClick={reset} className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors">
+              <button onClick={reset} className="w-full py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors">
                 Import More Jobs
               </button>
             </div>
@@ -534,7 +534,7 @@ function ParsedJobCard({ job, selected, onToggle }: { job: ParsedJob; selected: 
       onClick={onToggle}
       className={cn(
         'glass rounded-2xl border cursor-pointer transition-all p-5 space-y-3',
-        selected ? 'border-indigo-500/40 bg-indigo-500/5 ring-1 ring-indigo-500/20' : 'border-border hover:border-accent/30',
+        selected ? 'border-accent/40 bg-accent/5 ring-1 ring-accent/20' : 'border-border hover:border-accent/30',
       )}
     >
       {/* Header */}
@@ -556,7 +556,7 @@ function ParsedJobCard({ job, selected, onToggle }: { job: ParsedJob; selected: 
             {job.work_mode && <><span className="text-muted-foreground/60">·</span><span className={cn(job.work_mode === 'Remote' ? 'text-emerald-400' : job.work_mode === 'Hybrid' ? 'text-yellow-400' : '')}>{job.work_mode}</span></>}
           </div>
         </div>
-        <div className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all', selected ? 'border-indigo-500 bg-indigo-500' : 'border-border')}>
+        <div className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all', selected ? 'border-accent bg-accent' : 'border-border')}>
           {selected && <CheckCircle2 className="w-3 h-3 text-white" />}
         </div>
       </div>
@@ -613,7 +613,7 @@ function ParsedJobCard({ job, selected, onToggle }: { job: ParsedJob; selected: 
           {sourceLabel}
         </span>
         {job.apply_link && (
-          <a href={job.apply_link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
+          <a href={job.apply_link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-xs text-accent hover:text-accent/80 flex items-center gap-1 transition-colors">
             Apply <ExternalLink className="w-3 h-3" />
           </a>
         )}

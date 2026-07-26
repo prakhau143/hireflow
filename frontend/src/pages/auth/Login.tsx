@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { setUser, setToken } = useAppStore()
+  const { setUser, setToken, theme } = useAppStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -45,12 +45,12 @@ export default function Login() {
         className="w-full max-w-md"
       >
         <div className="flex justify-center mb-8">
-          <Logo size={44} />
+          <Logo size={44} theme={theme === 'light' ? 'light' : 'dark'} />
         </div>
 
-        <div className="glass rounded-2xl border border-white/10 p-8">
-          <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
-          <p className="text-white/40 text-sm mb-7">Sign in to continue your job hunt</p>
+        <div className="glass rounded-2xl border border-border p-8">
+          <h1 className="text-2xl font-bold text-foreground mb-1">Welcome back</h1>
+          <p className="text-muted-foreground text-sm mb-7">Sign in to continue your job hunt</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <InputField
@@ -73,7 +73,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground"
               >
                 {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -82,7 +82,7 @@ export default function Login() {
             <div className="flex justify-end">
               <Link
                 to="/forgot-password"
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                className="text-xs text-accent hover:text-accent/80 transition-colors"
               >
                 Forgot password?
               </Link>
@@ -92,7 +92,7 @@ export default function Login() {
               type="submit"
               disabled={loading}
               whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium transition-colors disabled:opacity-60"
             >
               {loading ? (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -102,9 +102,9 @@ export default function Login() {
             </motion.button>
           </form>
 
-          <p className="text-center text-sm text-white/40 mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{' '}
-            <Link to="/register" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+            <Link to="/register" className="text-accent hover:text-accent/80 transition-colors">
               Create one
             </Link>
           </p>
@@ -116,7 +116,7 @@ export default function Login() {
 
 export function Register() {
   const navigate = useNavigate()
-  const { setUser, setToken } = useAppStore()
+  const { setUser, setToken, theme } = useAppStore()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -147,12 +147,12 @@ export function Register() {
         className="w-full max-w-md"
       >
         <div className="flex justify-center mb-8">
-          <Logo size={44} />
+          <Logo size={44} theme={theme === 'light' ? 'light' : 'dark'} />
         </div>
 
-        <div className="glass rounded-2xl border border-white/10 p-8">
-          <h1 className="text-2xl font-bold text-white mb-1">Create account</h1>
-          <p className="text-white/40 text-sm mb-7">Start your AI-powered job hunt</p>
+        <div className="glass rounded-2xl border border-border p-8">
+          <h1 className="text-2xl font-bold text-foreground mb-1">Create account</h1>
+          <p className="text-muted-foreground text-sm mb-7">Start your AI-powered job hunt</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <InputField icon={Mail} type="text" placeholder="Full Name" value={name} onChange={setName} required />
@@ -163,7 +163,7 @@ export function Register() {
               type="submit"
               disabled={loading}
               whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium transition-colors disabled:opacity-60"
             >
               {loading ? (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -173,9 +173,9 @@ export function Register() {
             </motion.button>
           </form>
 
-          <p className="text-center text-sm text-white/40 mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+            <Link to="/login" className="text-accent hover:text-accent/80 transition-colors">
               Sign in
             </Link>
           </p>
@@ -191,6 +191,7 @@ type FPStep = 'email' | 'otp' | 'password'
 
 export function ForgotPassword() {
   const navigate = useNavigate()
+  const { theme } = useAppStore()
   const [step, setStep] = useState<FPStep>('email')
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
@@ -320,7 +321,7 @@ export function ForgotPassword() {
         className="w-full max-w-md"
       >
         <div className="flex justify-center mb-8">
-          <Logo size={44} />
+          <Logo size={44} theme={theme === 'light' ? 'light' : 'dark'} />
         </div>
 
         {/* Step indicator */}
@@ -328,18 +329,18 @@ export function ForgotPassword() {
           {(['email', 'otp', 'password'] as FPStep[]).map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                step === s ? 'bg-indigo-600 text-white' :
+                step === s ? 'bg-accent text-accent-foreground' :
                 ['email', 'otp', 'password'].indexOf(step) > i ? 'bg-emerald-500 text-white' :
-                'bg-white/10 text-white/30'
+                'bg-foreground/10 text-muted-foreground'
               }`}>
                 {['email', 'otp', 'password'].indexOf(step) > i ? '✓' : i + 1}
               </div>
-              {i < 2 && <div className={`w-8 h-px ${['email', 'otp', 'password'].indexOf(step) > i ? 'bg-emerald-500' : 'bg-white/10'}`} />}
+              {i < 2 && <div className={`w-8 h-px ${['email', 'otp', 'password'].indexOf(step) > i ? 'bg-emerald-500' : 'bg-border'}`} />}
             </div>
           ))}
         </div>
 
-        <div className="glass rounded-2xl border border-white/10 p-8">
+        <div className="glass rounded-2xl border border-border p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -350,12 +351,12 @@ export function ForgotPassword() {
             >
               {/* Header */}
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center">
-                  <StepIcon className="w-5 h-5 text-indigo-400" />
+                <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+                  <StepIcon className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-white">{label}</h1>
-                  <p className="text-white/40 text-xs">{sub}</p>
+                  <h1 className="text-xl font-bold text-foreground">{label}</h1>
+                  <p className="text-muted-foreground text-xs">{sub}</p>
                 </div>
               </div>
 
@@ -373,9 +374,9 @@ export function ForgotPassword() {
                   <PrimaryButton loading={loading}>
                     Send OTP <ArrowRight className="w-4 h-4" />
                   </PrimaryButton>
-                  <p className="text-center text-sm text-white/40 pt-1">
+                  <p className="text-center text-sm text-muted-foreground pt-1">
                     Remember it?{' '}
-                    <Link to="/login" className="text-cyan-400 hover:text-cyan-300">Back to sign in</Link>
+                    <Link to="/login" className="text-accent hover:text-accent/80">Back to sign in</Link>
                   </p>
                 </form>
               )}
@@ -396,8 +397,8 @@ export function ForgotPassword() {
                         onKeyDown={e => handleOtpKeyDown(i, e)}
                         onPaste={handleOtpPaste}
                         className={`w-11 h-14 text-center text-xl font-bold glass rounded-xl border transition-all outline-none
-                          ${digit ? 'border-indigo-500 text-white' : 'border-white/10 text-white/30'}
-                          focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20`}
+                          ${digit ? 'border-accent text-foreground' : 'border-border text-muted-foreground'}
+                          focus:border-accent focus:ring-2 focus:ring-accent/20`}
                       />
                     ))}
                   </div>
@@ -410,7 +411,7 @@ export function ForgotPassword() {
                     <button
                       type="button"
                       onClick={() => { setStep('email'); setOtp(['', '', '', '', '', '']) }}
-                      className="text-white/30 hover:text-white/60 transition-colors text-xs"
+                      className="text-muted-foreground hover:text-muted-foreground transition-colors text-xs"
                     >
                       ← Change email
                     </button>
@@ -418,7 +419,7 @@ export function ForgotPassword() {
                       type="button"
                       onClick={handleResend}
                       disabled={resendCountdown > 0 || loading}
-                      className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 disabled:text-white/20 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 disabled:text-muted-foreground/60 disabled:cursor-not-allowed transition-colors"
                     >
                       <RefreshCw className="w-3 h-3" />
                       {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend OTP'}
@@ -442,7 +443,7 @@ export function ForgotPassword() {
                     <button
                       type="button"
                       onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground"
                     >
                       {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -491,13 +492,13 @@ function PasswordStrength({ password }: { password: string }) {
     <div className="space-y-2">
       <div className="flex gap-1">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i <= score ? color : 'bg-white/10'}`} />
+          <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i <= score ? color : 'bg-foreground/10'}`} />
         ))}
       </div>
       <div className="flex items-center justify-between">
         <div className="flex gap-2 flex-wrap">
           {checks.map(c => (
-            <span key={c.label} className={`text-xs ${c.ok ? 'text-emerald-400' : 'text-white/20'}`}>
+            <span key={c.label} className={`text-xs ${c.ok ? 'text-emerald-400' : 'text-muted-foreground/60'}`}>
               {c.ok ? '✓' : '○'} {c.label}
             </span>
           ))}
@@ -514,7 +515,7 @@ function PrimaryButton({ children, loading }: { children: React.ReactNode; loadi
       type="submit"
       disabled={loading}
       whileTap={{ scale: 0.98 }}
-      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors disabled:opacity-60"
+      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium transition-colors disabled:opacity-60"
     >
       {loading ? (
         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -525,10 +526,10 @@ function PrimaryButton({ children, loading }: { children: React.ReactNode; loadi
 
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-cyan-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 rounded-full blur-3xl" style={{ background: 'var(--orb-1)' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full blur-3xl" style={{ background: 'var(--orb-3)' }} />
       </div>
       {children}
     </div>
@@ -552,14 +553,14 @@ function InputField({
 }) {
   return (
     <div className="relative">
-      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
       <input
         type={type}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="w-full glass rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-indigo-500/50 focus:outline-none transition-colors"
+        className="w-full glass rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground border border-border focus:border-accent/50 focus:outline-none transition-colors"
       />
     </div>
   )

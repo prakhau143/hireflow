@@ -46,7 +46,7 @@ interface Intelligence {
 // ─────────────────────────────────────────────────────────────────────────────
 // Small shared UI pieces
 // ─────────────────────────────────────────────────────────────────────────────
-function Card({ title, icon: Icon, iconColor = 'text-indigo-400', action, children, id }: {
+function Card({ title, icon: Icon, iconColor = 'text-accent', action, children, id }: {
   title: string; icon: any; iconColor?: string; action?: React.ReactNode; children: React.ReactNode; id?: string
 }) {
   return (
@@ -76,7 +76,7 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
   )
 }
 
-function ChipList({ items, onAdd, onRemove, placeholder, colorClass = 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' }: {
+function ChipList({ items, onAdd, onRemove, placeholder, colorClass = 'bg-accent/10 text-accent border-accent/20' }: {
   items: string[]; onAdd: (v: string) => void; onRemove: (v: string) => void; placeholder: string; colorClass?: string
 }) {
   const [val, setVal] = useState('')
@@ -95,7 +95,7 @@ function ChipList({ items, onAdd, onRemove, placeholder, colorClass = 'bg-indigo
         <input value={val} onChange={e => setVal(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && val.trim()) { onAdd(val.trim()); setVal('') } }}
           placeholder={placeholder}
-          className="flex-1 glass rounded-lg px-2.5 py-1.5 text-xs text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none" />
+          className="flex-1 glass rounded-lg px-2.5 py-1.5 text-xs text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-accent/40 focus:outline-none" />
         <button onClick={() => { if (val.trim()) { onAdd(val.trim()); setVal('') } }}
           className="px-2.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-accent/30">
           <Plus className="w-3.5 h-3.5" />
@@ -108,7 +108,7 @@ function ChipList({ items, onAdd, onRemove, placeholder, colorClass = 'bg-indigo
 function EditToggle({ editing, onToggle, onSave, saving }: { editing: boolean; onToggle: () => void; onSave: () => void; saving?: boolean }) {
   return editing ? (
     <div className="flex items-center gap-1.5">
-      <button onClick={onSave} disabled={saving} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs disabled:opacity-50">
+      <button onClick={onSave} disabled={saving} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground text-xs disabled:opacity-50">
         {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
       </button>
       <button onClick={onToggle} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground/80"><X className="w-3.5 h-3.5" /></button>
@@ -125,7 +125,7 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
     <div className="space-y-1">
       <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</label>
       <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full glass rounded-lg px-2.5 py-2 text-sm text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none" />
+        className="w-full glass rounded-lg px-2.5 py-2 text-sm text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-accent/40 focus:outline-none" />
     </div>
   )
 }
@@ -135,7 +135,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
     <div className="space-y-1">
       <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full glass rounded-lg px-2.5 py-2 text-sm text-foreground/80 border border-border focus:border-indigo-500/40 focus:outline-none">
+        className="w-full glass rounded-lg px-2.5 py-2 text-sm text-foreground/80 border border-border focus:border-accent/40 focus:outline-none">
         <option value="" className="bg-card">Not set</option>
         {options.map(o => <option key={o} value={o} className="bg-card">{o}</option>)}
       </select>
@@ -271,10 +271,10 @@ function Hero({ user, health, healthLoading, bestResume, onUploadClick, onShare 
   return (
     <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
       className="glass rounded-2xl border border-border p-6 relative overflow-hidden">
-      <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-gradient-to-br from-indigo-500/15 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl pointer-events-none" style={{ background: 'var(--gradient-2)', opacity: 0.15 }} />
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white shrink-0">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--gradient-1)] to-[var(--gradient-2)] flex items-center justify-center text-2xl font-bold text-white shrink-0">
             {user.name?.[0]?.toUpperCase() ?? 'U'}
           </div>
           <div className="min-w-0">
@@ -311,7 +311,7 @@ function Hero({ user, health, healthLoading, bestResume, onUploadClick, onShare 
       </div>
 
       <div className="flex flex-wrap gap-2 mt-5 pt-4 border-t border-border">
-        <button onClick={onUploadClick} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs hover:bg-indigo-500/30">
+        <button onClick={onUploadClick} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent/20 border border-accent/30 text-accent text-xs hover:bg-accent/30">
           <Upload className="w-3.5 h-3.5" /> Upload Resume
         </button>
         {bestResume && (
@@ -494,7 +494,7 @@ function SkillsMatrixCard({ user, onSave, saving }: { user: User; onSave: (p: Pa
               <input value={newSkill} onChange={e => setNewSkill(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && newSkill.trim()) { setRows([...rows, { skill: newSkill.trim(), level: 3, years: 0 }]); setNewSkill('') } }}
                 placeholder="Add a skill…"
-                className="flex-1 glass rounded-lg px-2.5 py-1.5 text-xs text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none" />
+                className="flex-1 glass rounded-lg px-2.5 py-1.5 text-xs text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-accent/40 focus:outline-none" />
               <button onClick={() => { if (newSkill.trim()) { setRows([...rows, { skill: newSkill.trim(), level: 3, years: 0 }]); setNewSkill('') } }}
                 className="px-2.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-accent/30"><Plus className="w-3.5 h-3.5" /></button>
             </div>
@@ -528,7 +528,7 @@ function ExperienceTimelineCard({ user, onSave, saving }: { user: User; onSave: 
         <div className="space-y-0">
           {rows.map((r, i) => (
             <div key={i} className="relative pl-5 pb-5 last:pb-0 border-l border-border last:border-transparent">
-              <div className="absolute -left-[5px] top-0.5 w-2.5 h-2.5 rounded-full bg-indigo-500 border-2 border-card" />
+              <div className="absolute -left-[5px] top-0.5 w-2.5 h-2.5 rounded-full bg-accent border-2 border-card" />
               {editing ? (
                 <div className="grid grid-cols-2 gap-2 -mt-1">
                   <Field label="Title" value={r.title} onChange={v => update(i, { title: v })} />
@@ -554,7 +554,7 @@ function ExperienceTimelineCard({ user, onSave, saving }: { user: User; onSave: 
       )}
       {editing && (
         <button onClick={() => setRows([...rows, { title: '', company: '', start: '', end: 'Present', current: true, description: '' }])}
-          className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"><Plus className="w-3.5 h-3.5" /> Add experience</button>
+          className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80"><Plus className="w-3.5 h-3.5" /> Add experience</button>
       )}
     </Card>
   )
@@ -612,7 +612,7 @@ function ProjectsCard({ user, onSave, saving }: { user: User; onSave: (p: Partia
       )}
       {editing && (
         <button onClick={() => setRows([...rows, { name: '', description: '', tech: [], github: '', demo: '' }])}
-          className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"><Plus className="w-3.5 h-3.5" /> Add project</button>
+          className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80"><Plus className="w-3.5 h-3.5" /> Add project</button>
       )}
     </Card>
   )
@@ -647,7 +647,7 @@ function CareerGoalsCard({ user, onSave }: { user: User; onSave: (p: Partial<Use
           <input value={targetSalary} onChange={e => setTargetSalary(e.target.value)}
             onBlur={() => { if (targetSalary !== (user.target_salary ?? '')) onSave({ target_salary: targetSalary } as any) }}
             placeholder="Target salary e.g. 20 LPA"
-            className="flex-1 glass rounded-lg px-2.5 py-1.5 text-xs text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none" />
+            className="flex-1 glass rounded-lg px-2.5 py-1.5 text-xs text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-accent/40 focus:outline-none" />
         </div>
         <p className="text-[10px] text-muted-foreground leading-relaxed">These goals are used by the AI matching engine to prioritize recommended jobs.</p>
       </div>
@@ -702,7 +702,7 @@ function CertificationsCard({ user, onSave, saving }: { user: User; onSave: (p: 
       )}
       {editing && (
         <button onClick={() => setRows([...rows, { name: '', issuer: '', year: new Date().getFullYear() }])}
-          className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"><Plus className="w-3.5 h-3.5" /> Add certification</button>
+          className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80"><Plus className="w-3.5 h-3.5" /> Add certification</button>
       )}
     </Card>
   )
@@ -736,9 +736,9 @@ function SocialProfilesCard({ user, onSave, saving }: { user: User; onSave: (p: 
             {editing ? (
               <input value={form[key as string] ?? ''} onChange={e => setForm({ ...form, [key]: e.target.value })}
                 placeholder={`${label} URL`}
-                className="flex-1 glass rounded-lg px-2.5 py-1.5 text-xs text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-indigo-500/40 focus:outline-none" />
+                className="flex-1 glass rounded-lg px-2.5 py-1.5 text-xs text-foreground/85 placeholder:text-muted-foreground border border-border focus:border-accent/40 focus:outline-none" />
             ) : user[key] ? (
-              <a href={user[key] as string} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-indigo-300 truncate">{user[key] as string}</a>
+              <a href={user[key] as string} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-accent truncate">{user[key] as string}</a>
             ) : (
               <span className="text-xs text-muted-foreground/60 italic">Not linked</span>
             )}
@@ -779,7 +779,7 @@ function ResumeIntelligenceSummary({ bestResume, bestVersion }: { bestResume: Re
               ))}
             </div>
           )}
-          <Link to="/resume" className="flex items-center justify-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 pt-1">
+          <Link to="/resume" className="flex items-center justify-center gap-1.5 text-xs text-accent hover:text-accent/80 pt-1">
             Improve Resume <ExternalLink className="w-3 h-3" />
           </Link>
         </div>

@@ -16,6 +16,7 @@ import AIInsights from '@/components/dashboard/AIInsights'
 import { CHART_COLORS, axisTick, gridStroke, ChartTooltip } from '@/components/dashboard/chartTheme'
 import { cn } from '@/lib/utils'
 import api from '@/lib/api'
+import { useAppStore } from '@/store/useAppStore'
 
 const RANGES = [
   { label: '30D', days: 30 },
@@ -90,6 +91,7 @@ function Funnel({ data }: { data: { stage: string; count: number }[] }) {
 
 export default function Dashboard() {
   const [days, setDays] = useState(180)
+  const isAdmin = useAppStore((s) => s.user?.role === 'admin')
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
@@ -138,15 +140,17 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
-          <Link to="/import">
-            <motion.span
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/20 border border-accent/30 text-accent text-sm hover:bg-accent/30 transition-colors cursor-pointer"
-            >
-              <Import className="w-4 h-4" /> Import Jobs
-            </motion.span>
-          </Link>
+          {isAdmin && (
+            <Link to="/import">
+              <motion.span
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/20 border border-accent/30 text-accent text-sm hover:bg-accent/30 transition-colors cursor-pointer"
+              >
+                <Import className="w-4 h-4" /> Import Jobs
+              </motion.span>
+            </Link>
+          )}
         </div>
       </motion.div>
 

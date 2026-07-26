@@ -204,3 +204,80 @@ def compute_match(job: dict, user, resume=None) -> dict:
         "missing_skills": missing,
         "suggestions": suggestions[:3],
     }
+
+
+def _job_to_match_dict(job) -> dict:
+    """Job ORM row → the plain dict compute_match() expects."""
+    return {
+        "role": job.title,
+        "company": job.company,
+        "skills": job.skills,
+        "experience_min": job.experience_min,
+        "experience_max": job.experience_max,
+        "location": job.location,
+        "work_mode": job.location_type,
+    }
+
+
+async def sync_user_job_match(db, job, user, resume=None):
+    """Compute (or refresh) one user's personalized match for one global job.
+    Only sets the initial status/archive_reason when the row is first created —
+    never overwrites a status the user has since changed (applied/shortlisted/...)."""
+    from sqlalchemy import select
+    from app.models.user_job_match import UserJobMatch
+
+    match = compute_match(_job_to_match_dict(job), user, resume)
+    existing = (await db.execute(
+        select(UserJobMatch).where(UserJobMatch.user_id == user.id, UserJobMatch.job_id == job.id)
+    )).scalar_one_or_none()
+
+    if existing is None:
+        status = "archived" if match["score"] < 40 else "new"
+        archive_reason = "low_match" if status == "archived" else None
+        existing = UserJobMatch(user_id=user.id, job_id=job.id, status=status, archive_reason=archive_reason)
+        db.add(existing)
+
+    existing.match_score = match["score"]
+    existing.match_tier = match["tier"]
+    existing.is_recommended = match["recommended"]
+    existing.experience_badge = match["experience_badge"]
+    existing.match_breakdown = match["breakdown"]
+    existing.matched_skills = match["matched_skills"]
+    existing.missing_skills = match["missing_skills"]
+    existing.score_suggestions = match["suggestions"]
+    return existing
+
+
+async def backfill_matches_for_new_job(db, job) -> int:
+    """A job just got approved — compute every existing user's personalized match for it."""
+    from sqlalchemy import select
+    from app.models.user import User
+    from app.models.resume import Resume
+
+    users = (await db.execute(select(User))).scalars().all()
+    for u in users:
+        resume = (await db.execute(
+            select(Resume).where(Resume.user_id == u.id).order_by(Resume.created_at.desc()).limit(1)
+        )).scalars().first()
+        await sync_user_job_match(db, job, u, resume)
+    await db.commit()
+    return len(users)
+
+
+async def backfill_matches_for_user(db, user, resume=None) -> int:
+    """A user just finished onboarding (or updated their profile) — compute their
+    personalized match against every currently-approved job."""
+    from sqlalchemy import select
+    from app.models.job import Job
+    from app.models.resume import Resume
+
+    if resume is None:
+        resume = (await db.execute(
+            select(Resume).where(Resume.user_id == user.id).order_by(Resume.created_at.desc()).limit(1)
+        )).scalars().first()
+
+    jobs = (await db.execute(select(Job).where(Job.review_status == "approved"))).scalars().all()
+    for j in jobs:
+        await sync_user_job_match(db, j, user, resume)
+    await db.commit()
+    return len(jobs)

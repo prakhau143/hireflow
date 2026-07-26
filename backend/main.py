@@ -18,6 +18,7 @@ from app.models.import_session import ImportSession
 from app.models.weekly_goal import WeeklyGoal
 from app.models.password_reset_otp import PasswordResetOTP
 from app.models.system_email_template import SystemEmailTemplate
+from app.models.user_job_match import UserJobMatch
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.jobs import router as jobs_router

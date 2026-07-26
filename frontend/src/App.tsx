@@ -41,6 +41,12 @@ function OnboardingGuard() {
   return <Outlet />
 }
 
+function AdminGuard() {
+  const { user } = useAppStore()
+  if (user && user.role !== 'admin') return <Navigate to="/" replace />
+  return <Outlet />
+}
+
 export default function App() {
   const { theme } = useAppStore()
 
@@ -81,8 +87,6 @@ export default function App() {
                 {/* User routes */}
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/import" element={<ImportJobs />} />
-                <Route path="/review" element={<ReviewPanel />} />
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetail />} />
                 <Route path="/resume" element={<ResumeManager />} />
@@ -93,18 +97,24 @@ export default function App() {
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<Settings />} />
 
-                {/* Admin routes */}
-                <Route path="/admin" element={<Dashboard />} />
-                <Route path="/admin/users" element={<AdminUsers />} />
-                <Route path="/admin/review" element={<ReviewPanel />} />
-                <Route path="/admin/jobs" element={<Jobs />} />
-                <Route path="/admin/ai" element={<ImportJobs />} />
-                <Route path="/admin/templates" element={<Templates />} />
-                <Route path="/admin/email-templates" element={<SystemEmailTemplates />} />
-                <Route path="/admin/smtp" element={<SmtpManager />} />
-                <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
-                <Route path="/admin/logs" element={<ActivityLogs />} />
-                <Route path="/admin/settings" element={<Settings />} />
+                {/* Admin-only routes — Import Jobs / Review Queue / Users / SMTP mgmt /
+                    System Logs never render for a non-admin, matching the require_admin
+                    backend gates (see jobs.py, imports.py, review.py) */}
+                <Route element={<AdminGuard />}>
+                  <Route path="/import" element={<ImportJobs />} />
+                  <Route path="/review" element={<ReviewPanel />} />
+                  <Route path="/admin" element={<Dashboard />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/review" element={<ReviewPanel />} />
+                  <Route path="/admin/jobs" element={<Jobs />} />
+                  <Route path="/admin/ai" element={<ImportJobs />} />
+                  <Route path="/admin/templates" element={<Templates />} />
+                  <Route path="/admin/email-templates" element={<SystemEmailTemplates />} />
+                  <Route path="/admin/smtp" element={<SmtpManager />} />
+                  <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+                  <Route path="/admin/logs" element={<ActivityLogs />} />
+                  <Route path="/admin/settings" element={<Settings />} />
+                </Route>
               </Route>
             </Route>
           </Route>

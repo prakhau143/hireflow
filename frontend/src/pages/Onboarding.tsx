@@ -15,7 +15,7 @@ const STEPS = ['Profile', 'Experience', 'Preferences', 'Resume']
 
 export default function Onboarding() {
   const navigate = useNavigate()
-  const { setUser } = useAppStore()
+  const { setUser, theme } = useAppStore()
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
 
@@ -153,37 +153,37 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-cyan-600/8 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full blur-3xl" style={{ background: 'var(--orb-1)' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full blur-3xl" style={{ background: 'var(--orb-3)' }} />
       </div>
 
       <div className="w-full max-w-2xl">
         <div className="flex justify-center mb-8">
-          <Logo size={44} />
+          <Logo size={44} theme={theme === 'light' ? 'light' : 'dark'} />
         </div>
 
         {/* Step indicators */}
         <div className="flex items-center justify-center gap-3 mb-8">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-3">
-              <div className={`flex items-center gap-2 ${i <= step ? 'text-white' : 'text-white/30'}`}>
+              <div className={`flex items-center gap-2 ${i <= step ? 'text-foreground' : 'text-muted-foreground'}`}>
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border ${
-                  i < step ? 'bg-indigo-600 border-indigo-600' :
-                  i === step ? 'border-indigo-500 text-indigo-400' :
-                  'border-white/20'
+                  i < step ? 'bg-accent border-accent text-accent-foreground' :
+                  i === step ? 'border-accent text-accent' :
+                  'border-border'
                 }`}>
                   {i < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
                 </div>
                 <span className="text-sm hidden sm:block">{s}</span>
               </div>
-              {i < STEPS.length - 1 && <div className={`w-8 h-px ${i < step ? 'bg-indigo-600' : 'bg-white/10'}`} />}
+              {i < STEPS.length - 1 && <div className={`w-8 h-px ${i < step ? 'bg-accent' : 'bg-border'}`} />}
             </div>
           ))}
         </div>
 
-        <div className="glass rounded-2xl border border-white/10 p-8">
+        <div className="glass rounded-2xl border border-border p-8">
           <AnimatePresence mode="wait">
             {step === 0 && (
               <StepPanel key="profile" title="Your Profile" subtitle="Let recruiters know who you are" icon={User}>
@@ -261,24 +261,24 @@ export default function Onboarding() {
                     disabled={loading || uploadingResume}
                   />
                   <div className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
-                    resumeFile ? 'border-indigo-500/50 bg-indigo-500/5' : 'border-white/10 hover:border-white/20'
+                    resumeFile ? 'border-accent/50 bg-accent/5' : 'border-border hover:border-accent/30'
                   } ${loading || uploadingResume ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {uploadingResume ? (
                       <div className="flex items-center justify-center gap-3">
-                        <span className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <p className="text-white/60 text-sm">Uploading and analyzing resume...</p>
+                        <span className="w-6 h-6 border-2 border-border border-t-foreground rounded-full animate-spin" />
+                        <p className="text-muted-foreground text-sm">Uploading and analyzing resume...</p>
                       </div>
                     ) : resumeFile ? (
                       <div className="flex items-center justify-center gap-3">
                         <CheckCircle2 className="w-6 h-6 text-emerald-400" />
                         <div>
-                          <p className="text-white font-medium">{resumeFile.name}</p>
-                          <p className="text-white/40 text-sm">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                          <p className="text-foreground font-medium">{resumeFile.name}</p>
+                          <p className="text-muted-foreground text-sm">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
                         </div>
                         <button
                           type="button"
                           onClick={(e) => { e.preventDefault(); setResumeFile(null) }}
-                          className="ml-2 text-white/30 hover:text-white/60"
+                          className="ml-2 text-muted-foreground hover:text-muted-foreground"
                           disabled={loading}
                         >
                           <X className="w-4 h-4" />
@@ -286,9 +286,9 @@ export default function Onboarding() {
                       </div>
                     ) : (
                       <div>
-                        <Upload className="w-10 h-10 text-white/20 mx-auto mb-3" />
-                        <p className="text-white/60 text-sm">Click to upload your resume (PDF)</p>
-                        <p className="text-white/30 text-xs mt-1">AI will analyze it for ATS score and skill gaps</p>
+                        <Upload className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+                        <p className="text-muted-foreground text-sm">Click to upload your resume (PDF)</p>
+                        <p className="text-muted-foreground text-xs mt-1">AI will analyze it for ATS score and skill gaps</p>
                       </div>
                     )}
                   </div>
@@ -297,11 +297,11 @@ export default function Onboarding() {
             )}
           </AnimatePresence>
 
-          <div className="flex justify-between mt-8 pt-6 border-t border-white/10">
+          <div className="flex justify-between mt-8 pt-6 border-t border-border">
             {step > 0 ? (
               <button
                 onClick={() => setStep(step - 1)}
-                className="px-5 py-2.5 rounded-xl glass border border-white/10 text-sm text-white/70 hover:text-white transition-colors"
+                className="px-5 py-2.5 rounded-xl glass border border-border text-sm text-foreground/80 hover:text-foreground transition-colors"
               >
                 Back
               </button>
@@ -311,7 +311,7 @@ export default function Onboarding() {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setStep(step + 1)}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors"
               >
                 Continue <ArrowRight className="w-4 h-4" />
               </motion.button>
@@ -320,7 +320,7 @@ export default function Onboarding() {
                 whileTap={{ scale: 0.98 }}
                 disabled={loading}
                 onClick={handleFinish}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-60"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium transition-colors disabled:opacity-60"
               >
                 {loading ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -332,7 +332,7 @@ export default function Onboarding() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-white/20 mt-4">You can update all this later in Settings</p>
+        <p className="text-center text-xs text-muted-foreground/60 mt-4">You can update all this later in Settings</p>
       </div>
     </div>
   )
@@ -357,12 +357,12 @@ function StepPanel({
       transition={{ duration: 0.2 }}
     >
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-indigo-400" />
+        <div className="w-10 h-10 rounded-xl bg-accent/20 border border-accent/30 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-accent" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
-          <p className="text-xs text-white/40">{subtitle}</p>
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
       </div>
       {children}
@@ -385,13 +385,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{label}</label>
+      <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full glass rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 border border-white/10 focus:border-indigo-500/50 focus:outline-none transition-colors"
+        className="w-full glass rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground border border-border focus:border-accent/50 focus:outline-none transition-colors"
       />
     </div>
   )

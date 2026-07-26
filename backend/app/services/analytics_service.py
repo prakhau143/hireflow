@@ -6,6 +6,7 @@ render "No Data Available" states.
 """
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 import json
 import re
 import time
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.job import Job
+from app.models.user_job_match import UserJobMatch
 from app.models.resume import Resume
 from app.models.smtp import SmtpConfig
 from app.models.smtp_log import SmtpLog
@@ -81,9 +83,33 @@ def _bucket_score(score: int) -> str:
     return "81-100"
 
 
-async def _user_jobs(db: AsyncSession, user_id: str) -> list[Job]:
-    result = await db.execute(select(Job).where(Job.user_id == user_id))
-    return list(result.scalars().all())
+async def _user_jobs(db: AsyncSession, user_id: str) -> list[SimpleNamespace]:
+    """This user's personalized view: every job they have a UserJobMatch row for
+    (every job approved since they existed), with Job's global facts and the
+    user's personalized match fields merged onto one object — every call site
+    below reads `j.match_score` / `j.status` / `j.missing_skills` etc. exactly as
+    it did when those lived directly on Job, so none of them needed to change."""
+    rows = (await db.execute(
+        select(Job, UserJobMatch).join(UserJobMatch, UserJobMatch.job_id == Job.id)
+        .where(UserJobMatch.user_id == user_id)
+    )).all()
+    return [
+        SimpleNamespace(
+            id=j.id, title=j.title, company=j.company, location=j.location,
+            location_type=j.location_type, experience_min=j.experience_min,
+            experience_max=j.experience_max, skills=j.skills, description=j.description,
+            ai_summary=j.ai_summary, smart_tags=j.smart_tags, salary=j.salary,
+            employment_type=j.employment_type, application_type=j.application_type,
+            review_status=j.review_status, source=j.source, created_at=j.created_at,
+            confidence_score=j.confidence_score,
+            match_score=m.match_score, matched_skills=m.matched_skills,
+            missing_skills=m.missing_skills, match_tier=m.match_tier,
+            experience_badge=m.experience_badge, is_recommended=m.is_recommended,
+            ai_analysis=m.ai_analysis, status=m.status, archive_reason=m.archive_reason,
+            emails_generated=m.emails_generated,
+        )
+        for j, m in rows
+    ]
 
 
 # ---------------------------------------------------------------- stats
@@ -499,6 +525,12 @@ async def admin_analytics(db: AsyncSession) -> dict:
     resumes = (await db.execute(select(Resume))).scalars().all()
     activity = (await db.execute(select(ActivityLog.user_id, ActivityLog.created_at))).all()
     smtp_logs = (await db.execute(select(SmtpLog.status))).scalars().all()
+    # status/ai_analysis are per-viewer now (UserJobMatch), not per-job — pull them
+    # separately for the platform-wide funnel and AI-usage count below.
+    match_statuses = (await db.execute(select(UserJobMatch.status))).scalars().all()
+    match_ai_usage = (await db.execute(
+        select(func.count(UserJobMatch.id)).where(UserJobMatch.ai_analysis.isnot(None))
+    )).scalar() or 0
 
     # User growth by month (+cumulative)
     months = _month_keys(6)
@@ -561,16 +593,17 @@ async def admin_analytics(db: AsyncSession) -> dict:
     bad = sum(1 for s in smtp_logs if s == "failed")
     smtp_performance = {"success": ok, "failed": bad, "rate": round(ok / (ok + bad) * 100, 1)} if (ok + bad) else None
 
-    # Application funnel platform-wide
-    statuses = Counter(j.status for j in jobs)
-    applications = [] if not jobs else [
-        {"stage": "Imported", "count": len(jobs)},
+    # Application funnel platform-wide — counts (user, job) match rows, not jobs,
+    # since applied/shortlisted/archived is now a per-viewer relationship.
+    statuses = Counter(match_statuses)
+    applications = [] if not match_statuses else [
+        {"stage": "Matched", "count": len(match_statuses)},
         {"stage": "Shortlisted", "count": statuses.get("shortlisted", 0)},
         {"stage": "Applied", "count": statuses.get("applied", 0)},
         {"stage": "Archived", "count": statuses.get("archived", 0)},
     ]
 
-    ai_usage = sum(1 for j in jobs if j.ai_summary or j.ai_analysis)
+    ai_usage = sum(1 for j in jobs if j.ai_summary) + match_ai_usage
 
     # ── Prompt 3 additions: import trends, review funnel, job-side tops ──────
     from app.services.taxonomy import canonical_location, role_family

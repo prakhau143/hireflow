@@ -46,17 +46,24 @@
     --gradient-1: #3b82f6;
     --gradient-2: #8b5cf6;
     --gradient-3: #06b6d4;
+
+    /* Ambient background orbs — dark's "glow" personality: punchy, colorful */
+    --orb-1: rgba(59, 130, 246, 0.1);
+    --orb-2: rgba(139, 92, 246, 0.08);
+    --orb-3: rgba(6, 182, 212, 0.06);
   }
 
   .light {
-    /* Light theme — distinct surfaces + shadows, not just a brightened dark mode */
+    /* Light theme — distinct surfaces + shadows, not just a brightened dark mode.
+       Accent is true blue here (dark theme stays indigo/purple) — this is the
+       "blue accents, not just a brightened dark theme" personality split. */
     --background: #f8fafc;
     --surface: #f1f5f9;
     --card: #ffffff;
     --border: #cbd5e1;
     --foreground: #0f172a;
     --muted-foreground: #64748b;
-    --accent: #4f46e5;
+    --accent: #2563eb;
     --accent-foreground: #ffffff;
     --success: #059669;
     --warning: #d97706;
@@ -65,8 +72,14 @@
     --glass-bg: rgba(255, 255, 255, 0.72);
     --glass-border: rgba(15, 23, 42, 0.08);
     --gradient-1: #0ea5e9;
-    --gradient-2: #3b82f6;
-    --gradient-3: #4f46e5;
+    --gradient-2: #2563eb;
+    --gradient-3: #1d4ed8;
+
+    /* Ambient background orbs — light's "shadow" personality: barely-there,
+       blue-only tinting so white surfaces stay clean instead of muddy */
+    --orb-1: rgba(14, 165, 233, 0.05);
+    --orb-2: rgba(37, 99, 235, 0.04);
+    --orb-3: rgba(29, 78, 216, 0.03);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -96,7 +109,7 @@
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .light .glass {
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.07);
 }
 
 .gradient-text {
