@@ -343,7 +343,7 @@ const AI_SUGGESTIONS = [
 function CompareModal({ jobs, onClose }: { jobs: Job[]; onClose: () => void }) {
   const fields = [
     { label: 'Salary', key: 'salary' as keyof Job },
-    { label: 'Experience', fn: (j: Job) => `${j.experience_min ?? 0}–${j.experience_max ?? '?'} yrs` },
+    { label: 'Experience', fn: (j: Job) => j.experience_display ?? `${j.experience_min ?? 0}–${j.experience_max ?? '?'} yrs` },
     { label: 'Location', fn: (j: Job) => `${j.location} (${j.location_type})` },
     { label: 'Match', fn: (j: Job) => `${j.match_score ?? 0}%` },
     { label: 'Skills Required', fn: (j: Job) => (j.skills ?? []).slice(0, 4).join(', ') },

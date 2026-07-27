@@ -40,7 +40,7 @@ def tier_for(score: float) -> str:
     return TIERS[-1][1]
 
 
-def _experience_score(user_years: int | None, exp_min: int, exp_max: int) -> tuple[float | None, str | None]:
+def _experience_score(user_years: int | None, exp_min: float, exp_max: float) -> tuple[float | None, str | None]:
     """Hard-cap table. Example (candidate has 2 yrs): job needs 0-2/1-3->100, 2-4->95,
     3+->50, 4+->40, 5+->30, 6+->20, 8+->10 — verified point-for-point against spec."""
     if user_years is None:
@@ -177,8 +177,8 @@ def compute_match(job: dict, user, resume=None) -> dict:
 
     exp_frac, exp_badge = _experience_score(
         user.years_experience,
-        int(job.get("experience_min") or 0),
-        int(job.get("experience_max") or 5),
+        float(job.get("experience_min") or 0),
+        float(job.get("experience_max") or 5),
     )
     skills_frac, matched, missing, mandatory_missing = _skills_score(job_skills, user_set)
     projects_frac = _projects_score(job_skills, user.projects)

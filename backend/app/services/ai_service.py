@@ -17,6 +17,40 @@ def _get_client() -> AsyncGroq:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# RULE ENGINE — Step 0: WhatsApp metadata stripping (runs BEFORE noise removal)
+# WhatsApp's own export prefix — Android "[1:21 pm, 25/7/2026] +91 92748 51755: "
+# or iOS "25/7/2026, 1:21 pm - +91 92748 51755: " — must never reach the block
+# splitter or the AI: the sender's own phone number is indistinguishable from a
+# job contact phone, and would falsely trip _is_end_signal on every single line.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_WA_TIME = r"\d{1,2}:\d{2}(?::\d{2})?\s*(?:[ap]\.?m\.?)?"
+_WA_DATE = r"\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}"
+
+_WA_METADATA_RES = [re.compile(p, re.IGNORECASE) for p in [
+    # Android: "[1:21 pm, 25/7/2026] +91 92748 51755: " — sender may be a saved
+    # contact name instead of a number, so match anything up to the next colon.
+    rf"^\[{_WA_TIME}\s*,\s*{_WA_DATE}\]\s*[^:\n]{{1,60}}:\s*",
+    # iOS: "25/7/2026, 1:21 pm - +91 92748 51755: "
+    rf"^{_WA_DATE}\s*,\s*{_WA_TIME}\s*-\s*[^:\n]{{1,60}}:\s*",
+]]
+
+
+def _strip_whatsapp_metadata(text: str) -> str:
+    """Strips the WhatsApp export timestamp/sender prefix from the front of every
+    line, keeping whatever message content follows the colon on the same line."""
+    out = []
+    for line in text.splitlines():
+        for rx in _WA_METADATA_RES:
+            stripped = rx.sub("", line, count=1)
+            if stripped != line:
+                line = stripped
+                break
+        out.append(line)
+    return "\n".join(out)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # RULE ENGINE — Step 1: Noise removal
 # Handles WhatsApp exports, LinkedIn copy-paste, Telegram groups, manual text.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -146,6 +180,11 @@ _BOUNDARY_RES = [re.compile(p, re.IGNORECASE) for p in [
     r"^\s*[Vv]acanc(?:y|ies)\s*[:\-]",
     # Numbered job lists: "1) Google — SDE Intern", "2. Zomato hiring backend dev"
     r"^\s*\d{1,2}[\).]\s+.{2,80}(hiring|developer|engineer|intern|analyst|designer|manager|executive|trainee|associate)",
+    # NEW: Additional start markers from spec
+    r"\bhiring\s+alert\b",
+    r"\bhiring\s*\|\s*",
+    r"\blooking\s+for\b",
+    r"\bopportunit(?:y|ies)\b",
 ]]
 
 
@@ -229,10 +268,94 @@ def _is_any_start_marker(stripped: str) -> bool:
 def _is_end_signal(stripped: str) -> bool:
     """A line that completes the job currently being collected: an email, a
     phone number, or any link (Google Form, LinkedIn apply, or a generic
-    company apply link — all of them are just an http(s) URL)."""
+    company apply link — all of them are just an http(s) URL). Also matches
+    contact method keywords like 'Resume at', 'Send CV', 'Mail us', 'DM',
+    'WhatsApp', 'Telegram'."""
     if not stripped:
         return False
-    return bool(_CONTACT_SIGNAL_RE.search(stripped)) or bool(_PHONE_RE.search(stripped))
+    # Existing: email, phone, URL
+    if bool(_CONTACT_SIGNAL_RE.search(stripped)) or bool(_PHONE_RE.search(stripped)):
+        return True
+    # NEW: Contact method keywords from spec
+    end_keywords = [
+        r"\bresume\s+at\b",
+        r"\bsend\s+cv\b",
+        r"\bsend\s+resume\b",
+        r"\bmail\s+us\b",
+        r"\bdm\b",
+        r"\bwhatsapp\b",
+        r"\btelegram\b",
+    ]
+    return any(re.search(kw, stripped, re.IGNORECASE) for kw in end_keywords)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RULE ENGINE — Step 2.5: Multi-job detection within single message
+# Some messages list multiple jobs under technology/role headings:
+# "HIRING\nPython Developer\n...\nReact Developer\n...\nNode Developer\n..."
+# These need to be split into separate job blocks before AI extraction.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MULTI_JOB_HEADING_RE = re.compile(
+    r"^(?:technology|role|position|stack|tech\s*stack|skills?)\s*[:\-]?\s*",
+    re.IGNORECASE,
+)
+
+_TECHNOLOGY_ROLES = [
+    "python", "java", "javascript", "react", "node", "angular", "vue", "flutter",
+    "android", "ios", "swift", "kotlin", "golang", "rust", "php", "dotnet", ".net",
+    "c\+\+", "c#", "ruby", "scala", "typescript", "frontend", "backend", "fullstack",
+    "devops", "data science", "machine learning", "ai", "ml", "blockchain", "cloud",
+    "aws", "azure", "gcp", "docker", "kubernetes", "linux", "security", "testing",
+]
+
+def _detect_multi_job_pattern(block: str) -> bool:
+    """Check if a block contains multiple jobs separated by role/technology headings."""
+    lines = block.splitlines()
+    tech_headings = 0
+    for line in lines:
+        stripped = line.strip().lower()
+        # Check for explicit "Technology:" or "Role:" headings
+        if _MULTI_JOB_HEADING_RE.match(stripped):
+            tech_headings += 1
+        # Check for standalone technology/role keywords that look like headings
+        elif stripped in _TECHNOLOGY_ROLES or any(tech in stripped for tech in _TECHNOLOGY_ROLES):
+            # Only count if it's on its own line or followed by a colon/dash
+            if len(stripped.split()) <= 3 and (stripped.endswith(":") or stripped.endswith("-")):
+                tech_headings += 1
+    return tech_headings >= 2
+
+def _split_multi_job_block(block: str) -> list[str]:
+    """Split a multi-job block into separate job blocks based on role/technology headings."""
+    lines = block.splitlines()
+    jobs: list[list[str]] = []
+    current: list[str] = []
+    
+    for line in lines:
+        stripped = line.strip()
+        # Check if this line is a role/technology heading
+        is_heading = False
+        if _MULTI_JOB_HEADING_RE.match(stripped):
+            is_heading = True
+        else:
+            lower = stripped.lower()
+            for tech in _TECHNOLOGY_ROLES:
+                if tech in lower and len(lower.split()) <= 3:
+                    is_heading = True
+                    break
+        
+        if is_heading and current:
+            # Save previous job and start new one
+            jobs.append(current)
+            current = [line]
+        else:
+            current.append(line)
+    
+    if current:
+        jobs.append(current)
+    
+    # Filter out empty or too-short blocks
+    return ["\n".join(job).strip() for job in jobs if len("\n".join(job).strip()) > 25]
 
 
 def _segment_blocks(text: str) -> list[str]:
@@ -241,7 +364,10 @@ def _segment_blocks(text: str) -> list[str]:
     until an end signal (email/phone/Google Form/LinkedIn apply/company apply
     link) closes the job, then look for the next marker. A strong marker seen
     mid-collection force-closes the current (contact-less) post rather than
-    losing it or merging it into the next one."""
+    losing it or merging it into the next one.
+    
+    After initial segmentation, checks for multi-job patterns within blocks
+    and splits them further before AI extraction."""
     lines = text.splitlines()
     blocks: list[str] = []
     current: list[str] = []
@@ -274,7 +400,17 @@ def _segment_blocks(text: str) -> list[str]:
         _flush()
 
     # Fallback: no markers ever matched → treat the whole text as one block
-    return blocks if blocks else ([text.strip()] if text.strip() else [])
+    initial_blocks = blocks if blocks else ([text.strip()] if text.strip() else [])
+    
+    # Step 2.5: Split multi-job blocks
+    final_blocks: list[str] = []
+    for block in initial_blocks:
+        if _detect_multi_job_pattern(block):
+            final_blocks.extend(_split_multi_job_block(block))
+        else:
+            final_blocks.append(block)
+    
+    return final_blocks
 
 
 def _detect_source(raw: str) -> str:
@@ -288,19 +424,94 @@ def _detect_source(raw: str) -> str:
     return "text"
 
 
-def _parse_experience(exp: str | None) -> tuple[int, int]:
+_EXP_NO_UPPER = 99.0  # sentinel for "N+ years" — avoids float('inf'), which isn't valid JSON
+_EXP_UNIT = r"(?:month|mon|yr|year)s?"
+_EXP_RANGE_SHARED_UNIT_RE = re.compile(
+    rf"(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\s*\+?\s*({_EXP_UNIT})\b")
+_EXP_PAIR_RE = re.compile(rf"(\d+(?:\.\d+)?)\s*\+?\s*({_EXP_UNIT})\b")
+
+
+def _exp_to_years(value: float, unit: str) -> float:
+    return round(value / 12, 2) if unit.startswith("month") or unit.startswith("mon") else value
+
+
+def _parse_experience(exp: str | None) -> tuple[float, float]:
+    """Unit-aware experience parser. The old version extracted every digit in the
+    string with no unit awareness, so 're.findall(r"\\d+", "6 Months – 2 Year")'
+    returned [6, 2] and was stored as experience_min=6, experience_max=2 — a
+    backwards YEAR range instead of 0.5-2. Every branch below is verified against
+    the full spec test matrix (months, mixed-unit ranges, shared-unit ranges,
+    open-ended "N+", and bare unitless numbers)."""
     if not exp:
-        return 0, 5
-    low = exp.lower()
+        return 0.0, 5.0
+    low = exp.lower().strip()
     if any(k in low for k in ("fresher", "intern", "0 year", "no exp")):
-        return 0, 0
-    nums = list(map(int, re.findall(r"\d+", exp)))
+        return 0.0, 0.0
+
+    # 1) Range sharing ONE trailing unit: "0-2 Years", "6-10 Yrs"
+    m = _EXP_RANGE_SHARED_UNIT_RE.search(low)
+    if m:
+        lo, hi, unit = float(m.group(1)), float(m.group(2)), m.group(3)
+        lo, hi = _exp_to_years(lo, unit), _exp_to_years(hi, unit)
+        return (lo, hi) if lo <= hi else (hi, lo)
+
+    # 2) Range with a unit on EACH side: "6 Months – 2 Year"
+    pairs = _EXP_PAIR_RE.findall(low)
+    if len(pairs) >= 2:
+        (lo_v, lo_u), (hi_v, hi_u) = pairs[0], pairs[1]
+        lo, hi = _exp_to_years(float(lo_v), lo_u), _exp_to_years(float(hi_v), hi_u)
+        return (lo, hi) if lo <= hi else (hi, lo)
+
+    # 3) A single "<number> <unit>" figure: "6 Months", "24 Months", "2+ Years"
+    if len(pairs) == 1:
+        val, unit = pairs[0]
+        years = _exp_to_years(float(val), unit)
+        if "+" in low:
+            return years, _EXP_NO_UPPER
+        return years, years
+
+    # 4) No unit words at all — bare numbers: "3-5", "2+", "3"
+    nums = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", low)]
     if len(nums) >= 2:
-        return nums[0], nums[1]
+        lo, hi = nums[0], nums[1]
+        return (lo, hi) if lo <= hi else (hi, lo)
     if len(nums) == 1:
         n = nums[0]
-        return max(0, n - 1), n + 2
-    return 0, 5
+        if "+" in low:
+            return n, _EXP_NO_UPPER
+        return max(0.0, n - 1), n + 2
+    return 0.0, 5.0
+
+
+def format_experience_range(exp_min: float | None, exp_max: float | None) -> str:
+    """Generates the human display string FROM the stored numeric fields — per spec,
+    display text like '6 Months – 2 Years' must never be stored redundantly as its
+    own string, only derived from experience_min/experience_max on read."""
+    if exp_min is None and exp_max is None:
+        return "Not specified"
+    lo = exp_min if exp_min is not None else 0.0
+    hi = exp_max if exp_max is not None else lo
+
+    def parts(v: float) -> tuple[str, str]:
+        if 0 < v < 1:
+            months = round(v * 12)
+            return str(months), "Month" if months == 1 else "Months"
+        if v == int(v):
+            years = int(v)
+            return str(years), "Year" if years == 1 else "Years"
+        return f"{v:g}", "Years"
+
+    if lo == hi:
+        n, unit = parts(lo)
+        return f"{n} {unit}"
+    if hi >= _EXP_NO_UPPER:
+        n, unit = parts(lo)
+        return f"{n}+ {unit}"
+    lo_n, lo_unit = parts(lo)
+    hi_n, hi_unit = parts(hi)
+    if lo_unit == hi_unit:
+        return f"{lo_n}–{hi_n} {hi_unit}"
+    return f"{lo_n} {lo_unit} – {hi_n} {hi_unit}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -386,15 +597,325 @@ REJECT_FLOOR = 40    # below this → rejected regardless of which fields are mi
 VALID_CEILING = 90   # at/above this → valid; between floor and ceiling → needs_review
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SKILL NORMALIZATION — Synonym mapping to canonical forms
+# Normalizes variations to standard forms before AI extraction
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SKILL_SYNONYMS = {
+    # REST API variations
+    "rest api": "REST API",
+    "rest apis": "REST API",
+    "restful api": "REST API",
+    "restful apis": "REST API",
+    "rest": "REST API",
+    "restful": "REST API",
+    
+    # Node.js variations
+    "node": "Node.js",
+    "nodejs": "Node.js",
+    "node js": "Node.js",
+    "node-js": "Node.js",
+    
+    # React variations
+    "reactjs": "React",
+    "react js": "React",
+    "react-js": "React",
+    "react.js": "React",
+    
+    # JavaScript variations
+    "javascript": "JavaScript",
+    "js": "JavaScript",
+    "java script": "JavaScript",
+    
+    # Python variations
+    "python": "Python",
+    "py": "Python",
+    
+    # Java variations
+    "java": "Java",
+    
+    # TypeScript variations
+    "typescript": "TypeScript",
+    "ts": "TypeScript",
+    "type script": "TypeScript",
+    
+    # Angular variations
+    "angular": "Angular",
+    "angularjs": "Angular",
+    "angular js": "Angular",
+    
+    # Vue variations
+    "vue": "Vue",
+    "vuejs": "Vue",
+    "vue js": "Vue",
+    
+    # Database variations
+    "postgresql": "PostgreSQL",
+    "postgres": "PostgreSQL",
+    "mongo": "MongoDB",
+    "mongodb": "MongoDB",
+    "mysql": "MySQL",
+    "sql": "SQL",
+    
+    # Cloud variations
+    "aws": "AWS",
+    "amazon web services": "AWS",
+    "azure": "Azure",
+    "microsoft azure": "Azure",
+    "gcp": "GCP",
+    "google cloud": "GCP",
+    
+    # DevOps variations
+    "docker": "Docker",
+    "kubernetes": "Kubernetes",
+    "k8s": "Kubernetes",
+    "ci/cd": "CI/CD",
+    "cicd": "CI/CD",
+    
+    # Framework variations
+    "django": "Django",
+    "flask": "Flask",
+    "fastapi": "FastAPI",
+    "spring boot": "Spring Boot",
+    "springboot": "Spring Boot",
+    "express": "Express",
+    "express.js": "Express",
+    "nextjs": "Next.js",
+    "next js": "Next.js",
+    "nuxt": "Nuxt",
+    "nuxtjs": "Nuxt",
+    
+    # Mobile variations
+    "android": "Android",
+    "ios": "iOS",
+    "swift": "Swift",
+    "kotlin": "Kotlin",
+    "flutter": "Flutter",
+    "react native": "React Native",
+    "reactnative": "React Native",
+}
+
+def _normalize_skill(skill: str) -> str:
+    """Normalize a single skill to its canonical form."""
+    if not skill:
+        return skill
+    normalized = skill.strip().lower()
+    return _SKILL_SYNONYMS.get(normalized, skill.strip())
+
+def _normalize_skills(skills: list[str]) -> list[str]:
+    """Normalize a list of skills to canonical forms, deduplicating."""
+    if not skills:
+        return []
+    normalized = set()
+    for skill in skills:
+        canonical = _normalize_skill(skill)
+        if canonical:
+            normalized.add(canonical)
+    return sorted(list(normalized))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COMPANY DETECTION — Priority-based extraction with normalization
+# Priority: Explicit company name > Email domain > Website URL
+# Normalizes suffixes: "Enerlogs Analytics" → "Enerlogs Analytics Pvt Ltd"
+# Removes prefixes: "At Connectiqo" → "Connectiqo"
+# ─────────────────────────────────────────────────────────────────────────────
+
+_COMPANY_SUFFIXES = [
+    "pvt ltd", "pvt. ltd.", "private limited", "pvt limited",
+    "ltd", "ltd.", "limited",
+    "inc", "inc.", "incorporated",
+    "llc", "llc.",
+    "corp", "corp.", "corporation",
+    "solutions", "technologies", "technology", "systems", "software",
+    "analytics", "labs", "innovations", "global", "india", "services",
+]
+
+_COMPANY_PREFIXES = [
+    "at ", "at", "for ", "for", "with ", "with",
+]
+
+def _normalize_company_name(name: str) -> str:
+    """Normalize company name by adding standard suffixes and removing prefixes."""
+    if not name:
+        return name
+    
+    # Remove prefixes like "At Connectiqo" → "Connectiqo"
+    for prefix in _COMPANY_PREFIXES:
+        if name.lower().startswith(prefix):
+            name = name[len(prefix):].strip()
+            break
+    
+    # Capitalize properly
+    name = name.strip().title()
+    
+    # Check if already has a suffix
+    lower = name.lower()
+    has_suffix = any(suffix in lower for suffix in _COMPANY_SUFFIXES)
+    
+    # If no suffix and name is reasonably long, add "Pvt Ltd"
+    if not has_suffix and len(name) >= 3:
+        # Don't add suffix to very short or generic names
+        if name not in ("It", "Hr", "Admin", "Team"):
+            name = f"{name} Pvt Ltd"
+    
+    return name
+
+
+def _extract_company_from_text(raw_block: str) -> str | None:
+    """Extract company name from raw text using common patterns."""
+    lines = raw_block.splitlines()
+    for line in lines:
+        stripped = line.strip()
+        # Look for "Company:" or "Organization:" patterns
+        if re.match(r"^(?:🏢\s*)?[Cc]ompany\s*(?:[Nn]ame)?\s*[:\-]\s*", stripped, re.IGNORECASE):
+            parts = re.split(r"[:\-]", stripped, 1)
+            if len(parts) == 2:
+                company = parts[1].strip()
+                if company and company.lower() not in _BLANK_VALUES:
+                    return _normalize_company_name(company)
+        # Look for "Organization:" pattern
+        if re.match(r"^[Oo]rganization\s*[:\-]\s*", stripped, re.IGNORECASE):
+            parts = re.split(r"[:\-]", stripped, 1)
+            if len(parts) == 2:
+                company = parts[1].strip()
+                if company and company.lower() not in _BLANK_VALUES:
+                    return _normalize_company_name(company)
+    return None
+
+
 def _company_from_email(email: str | None) -> str | None:
-    """Salvage a company name from a corporate email domain: hr@zomato.com → 'Zomato'."""
+    """Salvage a company name from a corporate email domain: hr@zomato.com → 'Zomato Pvt Ltd'."""
     if not email or "@" not in email:
         return None
     domain = email.split("@", 1)[1].lower()
     name = domain.split(".")[0]
     if name in _GENERIC_EMAIL_DOMAINS or len(name) < 3:
         return None
-    return name.replace("-", " ").replace("_", " ").title()
+    return _normalize_company_name(name)
+
+
+def _company_from_url(url: str | None) -> str | None:
+    """Extract company name from website URL: https://zomato.com/careers → 'Zomato Pvt Ltd'."""
+    if not url:
+        return None
+    # Remove protocol and path
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        # Remove www. and get main domain
+        domain = domain.replace("www.", "")
+        parts = domain.split(".")
+        if len(parts) >= 2:
+            name = parts[0]
+            if name and len(name) >= 3 and name not in _GENERIC_EMAIL_DOMAINS:
+                return _normalize_company_name(name)
+    except Exception:
+        pass
+    return None
+
+
+def _detect_company(job: dict, raw_block: str) -> str:
+    """Priority-based company detection: explicit > email domain > website URL."""
+    # Priority 1: Explicit company name from AI extraction
+    explicit = (job.get("company") or "").strip()
+    if explicit and explicit.lower() not in _BLANK_VALUES:
+        return _normalize_company_name(explicit)
+    
+    # Priority 2: Extract from text patterns (Company:, Organization:)
+    from_text = _extract_company_from_text(raw_block)
+    if from_text:
+        return from_text
+    
+    # Priority 3: Extract from email domain
+    email = job.get("email") or ""
+    from_email = _company_from_email(email)
+    if from_email:
+        return from_email
+    
+    # Priority 4: Extract from apply link/website URL
+    url = job.get("apply_link") or ""
+    from_url = _company_from_url(url)
+    if from_url:
+        return from_url
+    
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DUPLICATE DETECTION — Fuzzy matching based on key fields
+# Uses company, role, location, email, and experience to detect duplicates
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _create_job_fingerprint(job: dict) -> str:
+    """Create a normalized fingerprint for duplicate detection."""
+    role = (job.get("role") or "").lower().strip()
+    company = (job.get("company") or "").lower().strip()
+    location = (job.get("location") or "").lower().strip()
+    email = (job.get("email") or "").lower().strip()
+    exp_min = job.get("experience_min")
+    exp_max = job.get("experience_max")
+    
+    # Normalize experience to ranges
+    if exp_min is None and exp_max is None:
+        exp_range = "any"
+    elif exp_max is None or exp_max >= 99:  # No upper bound
+        exp_range = f"{exp_min}+"
+    else:
+        exp_range = f"{exp_min}-{exp_max}"
+    
+    # Create fingerprint string
+    parts = [
+        role,
+        company,
+        location,
+        email,
+        exp_range,
+    ]
+    # Remove empty parts and join
+    fingerprint = "|".join(p for p in parts if p)
+    return re.sub(r"[^a-z0-9|+\-]", "", fingerprint)
+
+
+def _is_duplicate_job(new_job: dict, existing_jobs: list[dict]) -> tuple[bool, str | None]:
+    """Check if a job is a duplicate of existing jobs using fuzzy matching.
+    
+    Returns (is_duplicate, duplicate_job_id).
+    """
+    new_fingerprint = _create_job_fingerprint(new_job)
+    
+    for existing in existing_jobs:
+        existing_fingerprint = _create_job_fingerprint(existing)
+        
+        # Exact fingerprint match
+        if new_fingerprint == existing_fingerprint:
+            return True, existing.get("id")
+        
+        # Fuzzy match: same role + company + location (email may differ)
+        new_role = (new_job.get("role") or "").lower().strip()
+        new_company = (new_job.get("company") or "").lower().strip()
+        new_location = (new_job.get("location") or "").lower().strip()
+        
+        existing_role = (existing.get("role") or "").lower().strip()
+        existing_company = (existing.get("company") or "").lower().strip()
+        existing_location = (existing.get("location") or "").lower().strip()
+        
+        # Match if role, company, and location are the same
+        if (new_role == existing_role and 
+            new_company == existing_company and 
+            new_location == existing_location and
+            new_role and new_company):  # Must have role and company
+            return True, existing.get("id")
+        
+        # Match if same email (strong signal)
+        new_email = (new_job.get("email") or "").lower().strip()
+        existing_email = (existing.get("email") or "").lower().strip()
+        if new_email and new_email == existing_email:
+            return True, existing.get("id")
+    
+    return False, None
 
 
 def _find_apply_url(raw_block: str) -> str | None:
@@ -407,9 +928,12 @@ def _find_apply_url(raw_block: str) -> str | None:
     return None
 
 
-def _validate_enterprise(job: dict, raw_block: str) -> tuple[bool, str, str]:
+def _validate_enterprise(job: dict, raw_block: str) -> tuple[bool, str, str, list[str]]:
     """
-    Returns (is_valid, status, reason). status: 'valid' | 'needs_review' | 'rejected'.
+    Returns (is_valid, status, reason, confidence_reasons). status: 'valid' | 'needs_review' | 'rejected'.
+    
+    confidence_reasons is a list of strings explaining why the confidence score is what it is.
+    This helps admins understand what's missing or what's good about a job in the review queue.
 
     Missing company, missing email, missing salary — none of these reject a job
     on their own; they just lower the confidence score. A recruiter who forgets
@@ -429,19 +953,17 @@ def _validate_enterprise(job: dict, raw_block: str) -> tuple[bool, str, str]:
     # ── Absolute floor #1 — pure noise / not enough text to be a real post ───
     word_count = len(raw_block.split())
     if word_count < 12:
-        return False, "rejected", "Too short to be a real job post (< 12 words)"
+        return False, "rejected", "Too short to be a real job post (< 12 words)", ["Insufficient text content"]
 
     # ── Absolute floor #2 — no role means there's nothing to import ─────────
     if not role or role.lower() in _BLANK_VALUES:
-        return False, "rejected", "No job title identified"
+        return False, "rejected", "No job title identified", ["Missing job title"]
 
     # Company: try direct extraction, then salvage from an email domain.
     # A miss here only costs points below — it is never a reject reason.
     if comp.lower() in _BLANK_VALUES:
-        salvage = _company_from_email(email) or _company_from_email(
-            (_ANY_EMAIL_RE.findall(raw_block) or [None])[0]
-        )
-        comp = salvage or ""
+        detected = _detect_company(job, raw_block)
+        comp = detected or ""
         job["company"] = comp or None
 
     # Scan the raw block for contact/apply info the AI might have missed
@@ -461,19 +983,66 @@ def _validate_enterprise(job: dict, raw_block: str) -> tuple[bool, str, str]:
     has_location = bool(loc) or "remote" in mode
     has_apply    = bool(email) or bool(apply_link) or bool(phone)
 
-    # ── Weighted confidence score (100 pts total) ────────────────────────────
+    # ── Weighted confidence score (100 pts total) with detailed reasons ───────
     score = 0
-    if comp:          score += 20
-    score += 20       # role — always true past the floor #2 check above
-    if exp:           score += 15
-    if has_location:  score += 10
-    if has_apply:     score += 20
-    if skills:        score += 10
-    if salary:        score += 5
+    confidence_reasons = []
+    
+    # Role (20 pts)
+    score += 20
+    confidence_reasons.append(f"✓ Job title identified: {role}")
+    
+    # Company (20 pts)
+    if comp:
+        score += 20
+        confidence_reasons.append(f"✓ Company detected: {comp}")
+    else:
+        confidence_reasons.append("✗ Company name missing")
+    
+    # Experience (15 pts)
+    if exp:
+        score += 15
+        confidence_reasons.append(f"✓ Experience specified: {exp}")
+    else:
+        confidence_reasons.append("✗ Experience requirement missing")
+    
+    # Location (10 pts)
+    if has_location:
+        score += 10
+        loc_display = loc if loc else mode
+        confidence_reasons.append(f"✓ Location: {loc_display}")
+    else:
+        confidence_reasons.append("✗ Location missing")
+    
+    # Apply/Contact (20 pts)
+    if has_apply:
+        score += 20
+        contact_methods = []
+        if email: contact_methods.append("email")
+        if phone: contact_methods.append("phone")
+        if apply_link: contact_methods.append("apply link")
+        confidence_reasons.append(f"✓ Contact method: {', '.join(contact_methods)}")
+    else:
+        confidence_reasons.append("✗ No contact or apply method found")
+    
+    # Skills (10 pts)
+    if skills:
+        score += 10
+        skill_count = len(skills)
+        confidence_reasons.append(f"✓ {skill_count} skill(s) identified")
+    else:
+        confidence_reasons.append("✗ No skills listed")
+    
+    # Salary (5 pts)
+    if salary:
+        score += 5
+        confidence_reasons.append(f"✓ Salary info: {salary}")
+    else:
+        confidence_reasons.append("✗ Salary information missing")
 
     ai_conf = int(job.get("confidence_score") or 0)
     blended = round(score * 0.75 + ai_conf * 0.25)   # deterministic score dominates
     job["confidence_score"] = blended
+    job["confidence_reasons"] = confidence_reasons
 
     missing = []
     if not comp:          missing.append("company")
@@ -484,13 +1053,13 @@ def _validate_enterprise(job: dict, raw_block: str) -> tuple[bool, str, str]:
     if not salary:        missing.append("salary")
 
     if blended < REJECT_FLOOR:
-        return False, "rejected", f"Confidence too low ({blended}%) — missing: {', '.join(missing)}"
+        return False, "rejected", f"Confidence too low ({blended}%) — missing: {', '.join(missing)}", confidence_reasons
 
     if blended >= VALID_CEILING:
-        return True, "valid", None
+        return True, "valid", None, confidence_reasons
 
     reason = f"Confidence {blended}%" + (f" — missing: {', '.join(missing)}" if missing else "")
-    return True, "needs_review", reason
+    return True, "needs_review", reason, confidence_reasons
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -538,7 +1107,10 @@ def _normalize_job(job: dict, user=None, resume=None) -> None:
     but unused, kept so existing call sites don't need to change."""
     from app.services.taxonomy import canonical_skills, canonical_location, role_family
 
-    job["skills"] = canonical_skills(job.get("skills"))
+    # Normalize skills using synonym mapping first, then taxonomy
+    job["skills"] = _normalize_skills(job.get("skills"))
+    job["skills"] = canonical_skills(job["skills"])
+    
     if job.get("location"):
         job["location"] = canonical_location(job["location"])
         if job["location"] == "Remote":
@@ -549,7 +1121,7 @@ def _normalize_job(job: dict, user=None, resume=None) -> None:
     job["experience_min"], job["experience_max"] = exp_min, exp_max
 
 
-async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[dict], dict]:
+async def parse_linkedin_posts(raw_text: str, user, resume=None, existing_jobs: list[dict] = None) -> tuple[list[dict], dict]:
     """
     Enterprise Hybrid Rule-Based + AI pipeline.
 
@@ -558,6 +1130,7 @@ async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[d
 
     `user` is the User ORM object (skills, experience, locations, roles used for
     matching); `resume` is the user's latest Resume row or None.
+    `existing_jobs` is a list of existing job dicts from the database for duplicate checking.
     Returns (results, pipeline_stats).
     """
     from difflib import SequenceMatcher
@@ -569,7 +1142,7 @@ async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[d
     total_lines = len(raw_lines)
 
     source  = _detect_source(raw_text)
-    cleaned = _clean_noise(raw_text)
+    cleaned = _clean_noise(_strip_whatsapp_metadata(raw_text))
 
     cleaned_lines = cleaned.splitlines()
     noise_removed = total_lines - sum(1 for l in cleaned_lines if l.strip())
@@ -583,6 +1156,9 @@ async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[d
     needs_review   = 0
     duplicate_cnt  = 0
     seen_keys:     list[tuple[str, str]] = []   # (dedupe_key, role label)
+    
+    # Use provided existing jobs or empty list
+    existing_jobs = existing_jobs or []
 
     for i, block in enumerate(blocks):
         print(f"[Pipeline] Block {i + 1}/{len(blocks)} ({len(block.split())} words)")
@@ -602,22 +1178,30 @@ async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[d
             continue
 
         # Confidence-scored validation — missing fields cost points, they don't reject
-        is_valid, status, reason = _validate_enterprise(job, block)
+        is_valid, status, reason, confidence_reasons = _validate_enterprise(job, block)
 
-        # Fuzzy duplicate detection within this import (≥90% similar fingerprint)
+        # Smart duplicate detection: first check against database, then within this import
         if is_valid:
-            key = _dedupe_key(job)
-            dup_of = None
-            for prev_key, prev_label in seen_keys:
-                if SequenceMatcher(None, key, prev_key).ratio() >= 0.9:
-                    dup_of = prev_label
-                    break
-            if dup_of:
-                is_valid, status = False, "rejected"
-                reason = f"Duplicate of '{dup_of}' in this import"
+            # Check against existing jobs in database
+            is_db_dup, dup_job_id = _is_duplicate_job(job, existing_jobs)
+            if is_db_dup:
+                is_valid, status = False, "duplicate"
+                reason = f"Duplicate of existing job (ID: {dup_job_id})"
                 duplicate_cnt += 1
             else:
-                seen_keys.append((key, f"{job.get('role')} @ {job.get('company')}"))
+                # Check for duplicates within this import (≥90% similar fingerprint)
+                key = _dedupe_key(job)
+                dup_of = None
+                for prev_key, prev_label in seen_keys:
+                    if SequenceMatcher(None, key, prev_key).ratio() >= 0.9:
+                        dup_of = prev_label
+                        break
+                if dup_of:
+                    is_valid, status = False, "duplicate"
+                    reason = f"Duplicate of '{dup_of}' in this import"
+                    duplicate_cnt += 1
+                else:
+                    seen_keys.append((key, f"{job.get('role')} @ {job.get('company')}"))
 
         # Standardize + score every job that survived extraction
         try:
@@ -628,6 +1212,7 @@ async def parse_linkedin_posts(raw_text: str, user, resume=None) -> tuple[list[d
         job["is_valid"]          = is_valid
         job["review_status"]     = status
         job["validation_reason"] = reason
+        job["confidence_reasons"] = confidence_reasons
         job["_source"]           = source
         job["_raw"]              = block[:400]
 

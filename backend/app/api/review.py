@@ -12,6 +12,7 @@ from app.models.job import Job
 from app.models.activity_log import ActivityLog
 from app.utils.auth import require_admin
 from app.services.matching_service import backfill_matches_for_new_job
+from app.services.ai_service import format_experience_range
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -40,6 +41,7 @@ def _serialize(j: Job) -> dict:
         "contact_email": j.contact_email, "contact_phone": j.contact_phone,
         "apply_link": j.apply_link, "salary": j.salary, "employment_type": j.employment_type,
         "experience_min": j.experience_min, "experience_max": j.experience_max,
+        "experience_display": format_experience_range(j.experience_min, j.experience_max),
         "confidence_score": j.confidence_score, "application_type": j.application_type,
         "review_status": j.review_status, "import_session_id": j.import_session_id,
         "duplicate_reason": j.duplicate_reason,
@@ -185,8 +187,8 @@ class ReviewEdit(BaseModel):
     salary: Optional[str] = None
     employment_type: Optional[str] = None
     skills: Optional[list[str]] = None
-    experience_min: Optional[int] = None
-    experience_max: Optional[int] = None
+    experience_min: Optional[float] = None
+    experience_max: Optional[float] = None
 
 
 @router.patch("/jobs/{job_id}")

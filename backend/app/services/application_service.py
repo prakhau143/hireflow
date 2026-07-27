@@ -11,8 +11,105 @@ import json
 import random
 import re
 from datetime import datetime
+from typing import Optional
 
 from app.config import settings
+
+# ---------------------------------------------------------------- application method priority
+
+APPLICATION_PRIORITY = [
+    "email",
+    "google_form",
+    "portal",
+    "linkedin",
+    "phone",
+    "no_contact"
+]
+
+
+def determine_primary_application_method(job) -> str:
+    """
+    Determine the primary application method based on priority rules.
+    
+    Priority order: EMAIL > GOOGLE_FORM > PORTAL > LINKEDIN > PHONE > NO_CONTACT
+    
+    A job can have multiple application methods, but only one primary method
+    is used for Apply All automation.
+    
+    Args:
+        job: Job object with has_email, has_google_form, has_company_portal, 
+             has_linkedin, has_phone flags
+    
+    Returns:
+        Primary application method string
+    """
+    # Check flags first (for custom jobs)
+    if getattr(job, 'has_email', False) and job.contact_email:
+        return "email"
+    if getattr(job, 'has_google_form', False):
+        return "google_form"
+    if getattr(job, 'has_company_portal', False):
+        return "portal"
+    if getattr(job, 'has_linkedin', False):
+        return "linkedin"
+    if getattr(job, 'has_phone', False) and job.contact_phone:
+        return "phone"
+    
+    # Fallback to legacy logic for imported jobs
+    if job.contact_email:
+        return "email"
+    if job.apply_link and "google" in job.apply_link.lower():
+        return "google_form"
+    if job.apply_link:
+        return "portal"
+    if job.contact_phone:
+        return "phone"
+    
+    return "no_contact"
+
+
+def update_application_method_flags(job) -> None:
+    """
+    Update application method flags based on job contact information.
+    
+    This should be called when saving or updating a job to ensure
+    the boolean flags are in sync with the actual contact data.
+    """
+    job.has_email = bool(job.contact_email)
+    job.has_google_form = bool(job.apply_link and "google" in job.apply_link.lower())
+    job.has_company_portal = bool(job.apply_link and "google" not in job.apply_link.lower())
+    job.has_linkedin = bool(job.contact_linkedin)
+    job.has_phone = bool(job.contact_phone)
+    
+    # Set primary application method based on priority
+    job.primary_application_method = determine_primary_application_method(job)
+    
+    # For backward compatibility, also set the legacy application_type field
+    job.application_type = job.primary_application_method
+
+
+def get_application_badges(job) -> list[dict]:
+    """
+    Get all available application methods as badges for UI display.
+    
+    Returns a list of badges with emoji and label for each available method.
+    Multiple badges can be shown on job cards.
+    """
+    badges = []
+    
+    if getattr(job, 'has_email', False) or job.contact_email:
+        badges.append({"type": "email", "emoji": "📧", "label": "Email"})
+    if getattr(job, 'has_google_form', False) or (job.apply_link and "google" in job.apply_link.lower()):
+        badges.append({"type": "google_form", "emoji": "📝", "label": "Google Form"})
+    if getattr(job, 'has_company_portal', False) or (job.apply_link and "google" not in job.apply_link.lower()):
+        badges.append({"type": "portal", "emoji": "🌐", "label": "Portal"})
+    if getattr(job, 'has_linkedin', False) or job.contact_linkedin:
+        badges.append({"type": "linkedin", "emoji": "💼", "label": "LinkedIn"})
+    if getattr(job, 'has_phone', False) or job.contact_phone:
+        badges.append({"type": "phone", "emoji": "📱", "label": "Phone"})
+    
+    return badges
+
 
 # ---------------------------------------------------------------- variables
 

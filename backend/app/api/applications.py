@@ -30,6 +30,7 @@ from app.utils.encryption import decrypt_password
 from app.services import application_service as agent
 from app.services.analytics_service import _user_jobs
 from app.services.system_email_service import send_system_email
+from app.services.application_service import determine_primary_application_method
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -77,7 +78,14 @@ async def quota(db: AsyncSession = Depends(get_db), user: User = Depends(get_cur
 
 @router.post("/prepare")
 async def prepare(body: PrepareRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """AI Application Preparation Agent — one package per selected job (max 10/batch)."""
+    """AI Application Preparation Agent — one package per selected job (max 10/batch).
+    
+    Uses priority-based application method selection:
+    EMAIL > GOOGLE_FORM > PORTAL > LINKEDIN > PHONE > NO_CONTACT
+    
+    Only EMAIL jobs are prepared for automatic sending. Other methods are skipped
+    with instructions for manual action.
+    """
     if not body.job_ids:
         raise HTTPException(400, "No jobs selected")
     job_ids = body.job_ids[:10]
@@ -104,33 +112,70 @@ async def prepare(body: PrepareRequest, db: AsyncSession = Depends(get_db), user
     already = set(existing)
 
     SKIP_REASONS = {
-        "google_form": "Google Form — apply manually (link included)",
+        "email": None,  # Never skip email - this is the primary method
+        "google_form": "Google Form — needs manual action (Open Form button)",
+        "portal": "Company Career Page — open the apply link manually",
         "linkedin": "LinkedIn Easy Apply — apply on LinkedIn",
-        "portal": "Company portal — open the apply link",
-        "phone": "Phone contact only — call/WhatsApp to apply",
-        "none": "Incomplete job — no contact info",
+        "phone": "Phone contact — call or WhatsApp to apply",
+        "no_contact": "No contact information available",
+    }
+
+    ACTION_LABELS = {
+        "google_form": "Open Google Form",
+        "portal": "Open Career Page",
+        "linkedin": "Open LinkedIn",
+        "phone": "Call / WhatsApp",
+        "no_contact": "Cannot Apply",
     }
 
     packages, skipped = [], []
     for job in jobs:
         if job.id in already or job.status == "applied":
-            skipped.append({"job_id": job.id, "title": job.title, "reason": "Already applied / queued"})
-            continue
-        atype = getattr(job, "application_type", None) or ("email" if job.contact_email else "none")
-        if atype != "email" or not job.contact_email:
             skipped.append({
-                "job_id": job.id, "title": job.title,
-                "reason": SKIP_REASONS.get(atype, "No contact email on this job"),
-                "apply_link": job.apply_link,
-                "application_type": atype,
+                "job_id": job.id, 
+                "title": job.title, 
+                "reason": "Already applied / queued",
+                "action": None,
             })
             continue
+        
+        # Determine primary application method using priority logic
+        primary_method = determine_primary_application_method(job)
+        
+        # Only prepare packages for EMAIL - other methods need manual action
+        if primary_method != "email":
+            skip_reason = SKIP_REASONS.get(primary_method, "Unknown application method")
+            action = ACTION_LABELS.get(primary_method, "Manual Action Required")
+            skipped.append({
+                "job_id": job.id, 
+                "title": job.title,
+                "company": job.company,
+                "reason": skip_reason,
+                "action": action,
+                "apply_link": job.apply_link,
+                "primary_application_method": primary_method,
+                "application_badges": agent.get_application_badges(job),
+            })
+            continue
+        
+        # Email exists - prepare AI package
+        if not job.contact_email:
+            skipped.append({
+                "job_id": job.id, 
+                "title": job.title,
+                "reason": "Email method selected but no email address found",
+                "action": None,
+                "primary_application_method": primary_method,
+            })
+            continue
+            
         template = agent.pick_template(job, templates)
         resume = agent.pick_resume(job, resumes)
         pkg = await agent.prepare_package(job, user, template, resume)
         pkg["job_title"] = job.title
         pkg["company"] = job.company
         pkg["match_score"] = round(job.match_score or 0)
+        pkg["primary_application_method"] = "email"
         packages.append(pkg)
 
     q = await _sent_today(db, user.id)
@@ -265,6 +310,8 @@ async def _process_queue(user_id: str, smtp_id: str):
                     ))).scalar_one_or_none()
                     if match:
                         match.status = "applied"
+                        match.application_method = "email"
+                        match.applied_at = datetime.now(timezone.utc)
                         match.emails_generated = (match.emails_generated or 0) + 1
                     job_label = f"{job.title} at {job.company}"
                 db.add(SmtpLog(user_id=user_id, smtp_id=smtp_id, action="email_sent", status="success",

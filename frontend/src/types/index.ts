@@ -79,6 +79,7 @@ export interface Job {
   location_type: 'remote' | 'hybrid' | 'onsite'
   experience_min: number
   experience_max: number
+  experience_display?: string
   skills: string[]
   description: string
   contact_email?: string

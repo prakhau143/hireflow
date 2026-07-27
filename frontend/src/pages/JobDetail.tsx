@@ -239,7 +239,7 @@ export default function JobDetail() {
               {(job.experience_min != null || job.experience_max != null) && (
                 <span className="flex items-center gap-1.5">
                   <Briefcase className="w-3.5 h-3.5" />
-                  {job.experience_min ?? 0}–{job.experience_max ?? '?'} yrs
+                  {job.experience_display ?? `${job.experience_min ?? 0}–${job.experience_max ?? '?'} yrs`}
                 </span>
               )}
               {job.salary && (
@@ -802,7 +802,7 @@ export default function JobDetail() {
                 {job.experience_min != null && (
                   <li className="flex items-center gap-2 text-xs text-muted-foreground">
                     <div className="w-1.5 h-1.5 rounded-full bg-accent/50 shrink-0" />
-                    {job.experience_min}–{job.experience_max} years experience
+                    {job.experience_display ?? `${job.experience_min}–${job.experience_max} years`} experience
                   </li>
                 )}
                 {job.skills.slice(0, 8).map(s => (

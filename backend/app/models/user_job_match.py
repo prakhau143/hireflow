@@ -37,6 +37,10 @@ class UserJobMatch(Base):
     status: Mapped[str] = mapped_column(String(20), default="new", index=True)
     archive_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # low_match|missing_experience|missing_skills|expired
     emails_generated: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # Track how the user applied to this job
+    application_method: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)  # email|google_form|portal|linkedin|phone|manual
+    applied_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(

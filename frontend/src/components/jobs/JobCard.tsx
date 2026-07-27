@@ -220,7 +220,7 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
           )}
           {(job.experience_min != null || job.experience_max != null) && (
             <span className="flex items-center gap-1">
-              <Briefcase className="w-3 h-3" />{job.experience_min ?? 0}–{job.experience_max ?? '?'} yrs
+              <Briefcase className="w-3 h-3" />{job.experience_display ?? `${job.experience_min ?? 0}–${job.experience_max ?? '?'} yrs`}
             </span>
           )}
           {job.salary && (

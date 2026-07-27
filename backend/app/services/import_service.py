@@ -44,7 +44,7 @@ def spawn_import(session_id: str):
 
 async def run_import(session_id: str):
     from app.services.ai_service import (
-        _detect_source, _clean_noise, _segment_blocks, _extract_job_ai,
+        _detect_source, _clean_noise, _strip_whatsapp_metadata, _segment_blocks, _extract_job_ai,
         _validate_enterprise, _normalize_job, _dedupe_key, _parse_experience,
     )
 
@@ -66,7 +66,7 @@ async def run_import(session_id: str):
 
         # ── Stage: noise removal ────────────────────────────────────────────
         await _update(session_id, status="noise_removal", source=source)
-        cleaned = _clean_noise(raw_text)
+        cleaned = _clean_noise(_strip_whatsapp_metadata(raw_text))
         noise_removed = total_lines - sum(1 for l in cleaned.splitlines() if l.strip())
 
         # ── Stage: block detection ──────────────────────────────────────────

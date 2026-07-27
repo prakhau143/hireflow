@@ -13,7 +13,7 @@ interface ReviewJob {
   id: string; title: string; company: string; location: string; location_type: string
   skills: string[]; contact_email: string | null; contact_phone: string | null
   apply_link: string | null; salary: string | null; employment_type: string | null
-  experience_min: number; experience_max: number
+  experience_min: number; experience_max: number; experience_display?: string
   confidence_score: number | null; application_type: string | null
   review_status: string; import_session_id: string | null
   duplicate_reason: string | null; validation_warnings: string[]
@@ -283,7 +283,7 @@ export default function ReviewPanel() {
                       <div className="px-11 py-3 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1.5 text-xs">
                         <p className="text-muted-foreground"><span className="text-muted-foreground">Contact:</span> {j.contact_email || j.contact_phone || '—'}</p>
                         <p className="text-muted-foreground truncate"><span className="text-muted-foreground">Apply link:</span> {j.apply_link || '—'}</p>
-                        <p className="text-muted-foreground"><span className="text-muted-foreground">Experience:</span> {j.experience_min}–{j.experience_max} yrs · <span className="text-muted-foreground">Salary:</span> {j.salary || '—'}</p>
+                        <p className="text-muted-foreground"><span className="text-muted-foreground">Experience:</span> {j.experience_display ?? `${j.experience_min}–${j.experience_max} yrs`} · <span className="text-muted-foreground">Salary:</span> {j.salary || '—'}</p>
                         <p className="text-muted-foreground"><span className="text-muted-foreground">Session:</span> {j.import_session_id?.slice(0, 8) || 'manual'} · <span className="text-muted-foreground">Source:</span> {j.source || '—'}</p>
                         <p className="text-muted-foreground md:col-span-2"><span className="text-muted-foreground">Skills:</span> {j.skills.join(', ') || '—'}</p>
                         {j.description && <p className="text-muted-foreground md:col-span-2 leading-relaxed">{j.description}</p>}

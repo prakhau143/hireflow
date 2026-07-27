@@ -1,16 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func
-from pydantic import BaseModel
-from typing import Optional
+from sqlalchemy import select, and_, or_, func, delete
+from pydantic import BaseModel, Field
+from typing import Optional, List
 from app.database import get_db
 from app.models.user import User
 from app.models.job import Job
 from app.models.user_job_match import UserJobMatch
 from app.models.activity_log import ActivityLog
+from app.models.skill import Skill
 from app.utils.auth import get_current_user, require_admin
-from app.services.ai_service import parse_linkedin_posts
+from app.services.ai_service import parse_linkedin_posts, format_experience_range, _parse_experience
 from app.services.matching_service import sync_user_job_match
+from app.services.job_lifecycle import run_lifecycle_cleanup, get_lifecycle_stats
+from app.services.application_service import update_application_method_flags, get_application_badges
+from app.data.india_locations import get_states, get_cities, get_all_locations
 from datetime import datetime, timezone
 import json
 import re
@@ -33,6 +37,83 @@ class SaveJobsRequest(BaseModel):
     jobs: list[dict]
 
 
+class CustomJobCreate(BaseModel):
+    """Multi-step custom job creation form"""
+    # Step 1: Basic Information
+    title: str = Field(..., min_length=1, max_length=200)
+    company: str = Field(..., min_length=1, max_length=200)
+    company_logo: Optional[str] = None
+    company_website: Optional[str] = None
+    company_type: Optional[str] = None  # Startup|MNC|SME|Product|Service
+    industry: Optional[str] = None
+    employment_type: Optional[str] = None  # Full Time|Internship|Contract|Part Time
+    job_category: Optional[str] = None
+    department: Optional[str] = None
+    
+    # Step 2: Location
+    location: str = ""
+    location_type: str = "onsite"  # remote|hybrid|onsite|wfa
+    
+    # Step 3: Experience
+    experience_min: float = 0
+    experience_max: float = 5
+    
+    # Step 4: Salary
+    salary: Optional[str] = None
+    
+    # Step 5: Skills
+    skills: List[str] = []
+    
+    # Step 6-8: Rich text fields
+    description: str = ""
+    requirements: Optional[str] = None
+    responsibilities: Optional[str] = None
+    benefits: Optional[str] = None
+    
+    # Step 9: Contact
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    apply_link: Optional[str] = None
+    contact_linkedin: Optional[str] = None
+    hiring_manager: Optional[str] = None
+    recruiter_linkedin: Optional[str] = None
+    
+    # Step 10: Publication
+    publication_status: str = "published"  # draft|published|scheduled
+    scheduled_at: Optional[str] = None  # ISO datetime string
+
+
+class CustomJobUpdate(BaseModel):
+    """Update custom job fields"""
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    company: Optional[str] = Field(None, min_length=1, max_length=200)
+    company_logo: Optional[str] = None
+    company_website: Optional[str] = None
+    company_type: Optional[str] = None
+    industry: Optional[str] = None
+    employment_type: Optional[str] = None
+    job_category: Optional[str] = None
+    department: Optional[str] = None
+    location: Optional[str] = None
+    location_type: Optional[str] = None
+    experience_min: Optional[float] = None
+    experience_max: Optional[float] = None
+    salary: Optional[str] = None
+    skills: Optional[List[str]] = None
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    responsibilities: Optional[str] = None
+    benefits: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    apply_link: Optional[str] = None
+    contact_linkedin: Optional[str] = None
+    hiring_manager: Optional[str] = None
+    recruiter_linkedin: Optional[str] = None
+    publication_status: Optional[str] = None
+    scheduled_at: Optional[str] = None
+
+
 # ── Job + UserJobMatch merge helpers ─────────────────────────────────────────
 
 def _serialize_job(job: Job, match: UserJobMatch) -> dict:
@@ -42,13 +123,24 @@ def _serialize_job(job: Job, match: UserJobMatch) -> dict:
         "id": job.id,
         "title": job.title,
         "company": job.company,
+        "company_logo": job.company_logo,
+        "company_website": job.company_website,
+        "company_type": job.company_type,
+        "industry": job.industry,
         "hiring_manager": job.hiring_manager,
+        "recruiter_linkedin": job.recruiter_linkedin,
         "location": job.location,
         "location_type": job.location_type,
+        "job_category": job.job_category,
+        "department": job.department,
         "experience_min": job.experience_min,
         "experience_max": job.experience_max,
+        "experience_display": format_experience_range(job.experience_min, job.experience_max),
         "skills": job.skills or [],
         "description": job.description,
+        "requirements": job.requirements,
+        "responsibilities": job.responsibilities,
+        "benefits": job.benefits,
         "raw_text": job.raw_text,
         "contact_email": job.contact_email,
         "contact_linkedin": job.contact_linkedin,
@@ -62,9 +154,15 @@ def _serialize_job(job: Job, match: UserJobMatch) -> dict:
         "salary": job.salary,
         "employment_type": job.employment_type,
         "confidence_score": job.confidence_score,
+        "confidence_reasons": job.confidence_reasons or [],
         "apply_link": job.apply_link,
         "application_type": job.application_type,
+        "primary_application_method": job.primary_application_method,
+        "application_badges": get_application_badges(job),
         "review_status": job.review_status,
+        "lifecycle_status": job.lifecycle_status,
+        "publication_status": job.publication_status,
+        "scheduled_at": job.scheduled_at,
         "created_at": job.created_at,
         "updated_at": job.updated_at,
         # personalized (per-viewer, from UserJobMatch)
@@ -81,6 +179,8 @@ def _serialize_job(job: Job, match: UserJobMatch) -> dict:
         "status": match.status,
         "archive_reason": match.archive_reason,
         "emails_generated": match.emails_generated,
+        "application_method": match.application_method,
+        "applied_at": match.applied_at,
     }
 
 
@@ -158,12 +258,41 @@ async def parse_jobs(
     user: User = Depends(require_admin),
 ):
     """Admin-only pipeline preview — parses pasted text into job candidates for
-    review before saving them into the shared global pool."""
+    review before saving them into the shared global pool.
+    
+    Uses the integrated enterprise pipeline with:
+    - WhatsApp metadata removal
+    - Expanded start/end markers
+    - Multi-job detection
+    - Smart duplicate detection against database
+    - Company detection with normalization
+    - Skill synonym normalization
+    - AI confidence scoring with reasons
+    """
     if not body.text.strip():
         raise HTTPException(status_code=400, detail="No text provided")
 
     try:
-        results, stats = await parse_linkedin_posts(body.text, user, None)
+        # Fetch existing jobs for duplicate detection
+        existing_jobs_result = await db.execute(
+            select(Job.id, Job.title, Job.company, Job.location, Job.contact_email,
+                   Job.experience_min, Job.experience_max)
+        )
+        existing_jobs = [
+            {
+                "id": j.id,
+                "role": j.title,
+                "company": j.company,
+                "location": j.location,
+                "email": j.contact_email,
+                "experience_min": j.experience_min,
+                "experience_max": j.experience_max,
+            }
+            for j in existing_jobs_result.all()
+        ]
+        
+        # Run the integrated pipeline
+        results, stats = await parse_linkedin_posts(body.text, user, None, existing_jobs)
         valid_jobs   = [j for j in results if j.get("is_valid")]
         invalid_jobs = [j for j in results if not j.get("is_valid")]
 
@@ -186,22 +315,33 @@ async def save_parsed_jobs(
 ):
     """Admin saves reviewed jobs into the global pool as pending_review — they go
     live for every user only once approved via the Review Queue. Dedupes globally
-    since there's now a single shared pool instead of one per importer."""
-    from app.services.ai_service import _parse_experience
-    from difflib import SequenceMatcher
+    since there's now a single shared pool instead of one per importer.
+    
+    Uses the smart duplicate detection from the AI service for better accuracy."""
+    from app.services.ai_service import _parse_experience, _is_duplicate_job
+    import uuid
 
     saved_count = 0
     duplicates = 0
     failed = 0
 
-    existing_rows = (await db.execute(
-        select(Job.title, Job.company, Job.location, Job.contact_email)
-    )).all()
-
-    def _key(t: str, c: str, l: str = "", e: str = "") -> str:
-        import re as _re
-        return _re.sub(r"[^a-z0-9 @]", "", " | ".join((x or "").lower().strip() for x in (t, c, l, e)))
-    existing_keys = [_key(t, c, l, e) for t, c, l, e in existing_rows]
+    # Fetch existing jobs for duplicate detection
+    existing_jobs_result = await db.execute(
+        select(Job.id, Job.title, Job.company, Job.location, Job.contact_email, 
+               Job.experience_min, Job.experience_max)
+    )
+    existing_jobs = [
+        {
+            "id": j.id,
+            "role": j.title,
+            "company": j.company,
+            "location": j.location,
+            "email": j.contact_email,
+            "experience_min": j.experience_min,
+            "experience_max": j.experience_max,
+        }
+        for j in existing_jobs_result.all()
+    ]
 
     for job_data in body.jobs:
         try:
@@ -214,11 +354,20 @@ async def save_parsed_jobs(
 
             exp_min, exp_max = _parse_experience(job_data.get("experience"))
 
-            new_key = _key(title, company, job_data.get("location") or "", contact_email or "")
-            if any(SequenceMatcher(None, new_key, k).ratio() >= 0.9 for k in existing_keys):
+            # Use smart duplicate detection
+            job_dict = {
+                "role": title,
+                "company": company,
+                "location": job_data.get("location") or "",
+                "email": contact_email or "",
+                "experience_min": exp_min,
+                "experience_max": exp_max,
+            }
+            is_dup, dup_id = _is_duplicate_job(job_dict, existing_jobs)
+            
+            if is_dup:
                 duplicates += 1
                 continue
-            existing_keys.append(new_key)
 
             job = Job(
                 user_id=user.id,
@@ -238,12 +387,14 @@ async def save_parsed_jobs(
                 hiring_manager=job_data.get("recruiter"),
                 ai_summary=job_data.get("description"),
                 confidence_score=int(job_data.get("confidence_score") or 0),
+                confidence_reasons=job_data.get("confidence_reasons") or [],
                 smart_tags=job_data.get("smart_tags") or [],
                 is_duplicate=False,
                 freshness_score=0,
                 review_status="pending_review",
                 apply_link=job_data.get("apply_link"),
                 source=source_tag,
+                lifecycle_status="active",  # New jobs start as active
             )
             db.add(job)
             saved_count += 1
@@ -252,12 +403,32 @@ async def save_parsed_jobs(
             print(f"[Save] Failed to save job '{job_data.get('role')}': {e}")
             failed += 1
 
+    # Enhanced import report with detailed statistics
+    confidence_scores = [int(j.get("confidence_score", 0)) for j in body.jobs if j.get("confidence_score")]
+    avg_confidence = round(sum(confidence_scores) / len(confidence_scores), 1) if confidence_scores else 0
+    
+    # Count by review status
+    status_counts = {"valid": 0, "needs_review": 0, "rejected": 0, "duplicate": 0}
+    for job_data in body.jobs:
+        status = job_data.get("review_status", "unknown")
+        if status in status_counts:
+            status_counts[status] += 1
+    
+    # Extract unique companies and skills
+    companies = set(j.get("company") for j in body.jobs if j.get("company"))
+    all_skills = set()
+    for job_data in body.jobs:
+        skills = job_data.get("skills") or []
+        all_skills.update(skills)
+    
     log = ActivityLog(
         user_id=user.id,
         action=f"{saved_count} Jobs Imported",
         description=(
             f"Imported {saved_count} jobs for review — "
-            f"{duplicates} duplicates skipped, {failed} failed"
+            f"{duplicates} duplicates skipped, {failed} failed. "
+            f"Avg confidence: {avg_confidence}%. "
+            f"Companies: {len(companies)}, Skills: {len(all_skills)}"
         ),
     )
     db.add(log)
@@ -268,6 +439,13 @@ async def save_parsed_jobs(
         "archived": 0,
         "duplicates": duplicates,
         "failed": failed,
+        "total_processed": len(body.jobs),
+        "status_breakdown": status_counts,
+        "average_confidence": avg_confidence,
+        "unique_companies": len(companies),
+        "unique_skills": len(all_skills),
+        "top_companies": list(companies)[:5],
+        "top_skills": list(all_skills)[:10],
     }
 
 
@@ -422,8 +600,793 @@ async def delete_job(job_id: str, db: AsyncSession = Depends(get_db), user: User
     job = (await db.execute(select(Job).where(Job.id == job_id))).scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    await db.delete(job)
+    
+    # Delete all associated UserJobMatch rows
+    await db.execute(
+        delete(UserJobMatch).where(UserJobMatch.job_id == job_id)
+    )
+    
+    # Delete the job
+    await db.execute(
+        delete(Job).where(Job.id == job_id)
+    )
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action="Job Deleted",
+        description=f"Permanently deleted job: {job.title} at {job.company}",
+    ))
     await db.commit()
+    return None
+
+
+# ── Admin Review Queue Endpoints ─────────────────────────────────────────────
+
+class JobReviewUpdate(BaseModel):
+    review_status: str  # approved | rejected
+    admin_notes: Optional[str] = None
+    # Optional: allow admin to correct fields
+    title: Optional[str] = None
+    company: Optional[str] = None
+    location: Optional[str] = None
+    skills: Optional[list[str]] = None
+    salary: Optional[str] = None
+
+
+@router.get("/admin/review-queue")
+async def get_review_queue(
+    status: str = Query("pending_review", description="Filter by review status"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — get jobs in the review queue with confidence reasons."""
+    result = await db.execute(
+        select(Job)
+        .where(Job.review_status == status)
+        .order_by(Job.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    jobs = result.scalars().all()
+    
+    return {
+        "jobs": [
+            {
+                "id": job.id,
+                "title": job.title,
+                "company": job.company,
+                "location": job.location,
+                "location_type": job.location_type,
+                "experience_min": job.experience_min,
+                "experience_max": job.experience_max,
+                "experience_display": format_experience_range(job.experience_min, job.experience_max),
+                "skills": job.skills or [],
+                "salary": job.salary,
+                "contact_email": job.contact_email,
+                "contact_phone": job.contact_phone,
+                "apply_link": job.apply_link,
+                "application_type": job.application_type,
+                "confidence_score": job.confidence_score,
+                "source": job.source,
+                "review_status": job.review_status,
+                "created_at": job.created_at,
+                "validation_reason": job.duplicate_reason,  # Stored in duplicate_reason for now
+            }
+            for job in jobs
+        ],
+        "count": len(jobs),
+        "status": status,
+    }
+
+
+@router.patch("/admin/{job_id}/review")
+async def review_job(
+    job_id: str,
+    body: JobReviewUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — approve or reject a job with optional corrections."""
+    job = (await db.execute(select(Job).where(Job.id == job_id))).scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if body.review_status not in ["approved", "rejected"]:
+        raise HTTPException(status_code=400, detail="Invalid review status")
+    
+    # Apply admin corrections if provided
+    if body.title:
+        job.title = body.title
+    if body.company:
+        job.company = body.company
+    if body.location is not None:
+        job.location = body.location
+    if body.skills is not None:
+        job.skills = body.skills
+    if body.salary is not None:
+        job.salary = body.salary
+    
+    # Update review status
+    job.review_status = body.review_status
+    
+    # Store admin notes in duplicate_reason field (temporary storage)
+    if body.admin_notes:
+        job.duplicate_reason = body.admin_notes
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action=f"Job {body.review_status.title()}",
+        description=f"Admin {body.review_status} job: {job.title} at {job.company}" + 
+                     (f" - Notes: {body.admin_notes}" if body.admin_notes else ""),
+    ))
+    await db.commit()
+    await db.refresh(job)
+    
+    return {
+        "id": job.id,
+        "title": job.title,
+        "company": job.company,
+        "review_status": job.review_status,
+        "message": f"Job {body.review_status} successfully",
+    }
+
+
+@router.post("/admin/bulk-review")
+async def bulk_review_jobs(
+    job_ids: list[str],
+    review_status: str = Query(..., description="approved | rejected"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — bulk approve or reject multiple jobs at once."""
+    if review_status not in ["approved", "rejected"]:
+        raise HTTPException(status_code=400, detail="Invalid review status")
+    
+    result = await db.execute(
+        select(Job).where(Job.id.in_(job_ids))
+    )
+    jobs = result.scalars().all()
+    
+    updated_count = 0
+    for job in jobs:
+        job.review_status = review_status
+        updated_count += 1
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action=f"Bulk Job {review_status.title()}",
+        description=f"Admin {review_status} {updated_count} jobs in bulk",
+    ))
+    await db.commit()
+    
+    return {
+        "updated": updated_count,
+        "review_status": review_status,
+        "message": f"Successfully {review_status} {updated_count} jobs",
+    }
+
+
+# ── Lifecycle Management Endpoints ─────────────────────────────────────────────
+
+@router.post("/admin/lifecycle/cleanup")
+async def trigger_lifecycle_cleanup(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — trigger the automatic job lifecycle cleanup (expire → archive → delete)."""
+    result = await run_lifecycle_cleanup(db)
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action="Lifecycle Cleanup",
+        description=f"Ran job lifecycle cleanup: {result['total_processed']} jobs processed",
+    ))
+    await db.commit()
+    
+    return result
+
+
+@router.get("/admin/lifecycle/stats")
+async def get_lifecycle_statistics(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — get statistics about jobs in each lifecycle stage."""
+    stats = await get_lifecycle_stats(db)
+    return stats
+
+
+# ── Custom Job Management Endpoints ─────────────────────────────────────────────
+
+@router.post("/admin/custom-jobs")
+async def create_custom_job(
+    body: CustomJobCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — create a custom job manually (not from AI import)."""
+    job = Job(
+        user_id=user.id,
+        title=body.title,
+        company=body.company,
+        company_logo=body.company_logo,
+        company_website=body.company_website,
+        company_type=body.company_type,
+        industry=body.industry,
+        hiring_manager=body.hiring_manager,
+        recruiter_linkedin=body.recruiter_linkedin,
+        location=body.location,
+        location_type=body.location_type,
+        job_category=body.job_category,
+        department=body.department,
+        experience_min=body.experience_min,
+        experience_max=body.experience_max,
+        skills=body.skills,
+        description=body.description,
+        requirements=body.requirements,
+        responsibilities=body.responsibilities,
+        benefits=body.benefits,
+        contact_email=body.contact_email,
+        contact_phone=body.contact_phone,
+        apply_link=body.apply_link,
+        contact_linkedin=body.contact_linkedin,
+        salary=body.salary,
+        employment_type=body.employment_type,
+        source="custom",
+        review_status="approved",  # Custom jobs are auto-approved
+        publication_status=body.publication_status,
+        scheduled_at=datetime.fromisoformat(body.scheduled_at) if body.scheduled_at else None,
+        lifecycle_status="active",
+    )
+    
+    # Update application method flags based on provided contact info
+    update_application_method_flags(job)
+    
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action="Custom Job Created",
+        description=f"Created custom job: {job.title} at {job.company}",
+    ))
+    await db.commit()
+    
+    # Create match for the admin user
+    match = await _get_or_create_match(db, job, user)
+    
+    return _serialize_job(job, match)
+
+
+@router.get("/admin/custom-jobs")
+async def list_custom_jobs(
+    publication_status: Optional[str] = Query(None, description="Filter by publication status"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — list custom jobs with optional filtering."""
+    query = select(Job).where(Job.source == "custom")
+    
+    if publication_status:
+        query = query.where(Job.publication_status == publication_status)
+    
+    query = query.order_by(Job.created_at.desc()).limit(limit).offset(offset)
+    result = await db.execute(query)
+    jobs = result.scalars().all()
+    
+    # Serialize with admin's match
+    serialized = []
+    for job in jobs:
+        match = await _get_or_create_match(db, job, user)
+        serialized.append(_serialize_job(job, match))
+    
+    return {
+        "jobs": serialized,
+        "count": len(jobs),
+        "publication_status": publication_status,
+    }
+
+
+@router.get("/admin/custom-jobs/{job_id}")
+async def get_custom_job(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — get a specific custom job."""
+    job = (await db.execute(
+        select(Job).where(Job.id == job_id, Job.source == "custom")
+    )).scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Custom job not found")
+    
+    match = await _get_or_create_match(db, job, user)
+    return _serialize_job(job, match)
+
+
+@router.patch("/admin/custom-jobs/{job_id}")
+async def update_custom_job(
+    job_id: str,
+    body: CustomJobUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — update a custom job."""
+    job = (await db.execute(
+        select(Job).where(Job.id == job_id, Job.source == "custom")
+    )).scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Custom job not found")
+    
+    # Update provided fields
+    update_data = body.model_dump(exclude_none=True)
+    for field, value in update_data.items():
+        if field == "scheduled_at" and value:
+            value = datetime.fromisoformat(value)
+        setattr(job, field, value)
+    
+    # Re-calculate application method flags if contact fields changed
+    contact_fields = ["contact_email", "contact_phone", "apply_link", "contact_linkedin"]
+    if any(field in update_data for field in contact_fields):
+        update_application_method_flags(job)
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action="Custom Job Updated",
+        description=f"Updated custom job: {job.title} at {job.company}",
+    ))
+    await db.commit()
+    await db.refresh(job)
+    
+    match = await _get_or_create_match(db, job, user)
+    return _serialize_job(job, match)
+
+
+@router.delete("/admin/custom-jobs/{job_id}", status_code=204)
+async def delete_custom_job(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — delete a custom job."""
+    job = (await db.execute(
+        select(Job).where(Job.id == job_id, Job.source == "custom")
+    )).scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Custom job not found")
+    
+    # Delete all associated UserJobMatch rows
+    await db.execute(
+        delete(UserJobMatch).where(UserJobMatch.job_id == job_id)
+    )
+    
+    # Delete the job
+    await db.execute(
+        delete(Job).where(Job.id == job_id)
+    )
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action="Custom Job Deleted",
+        description=f"Deleted custom job: {job.title} at {job.company}",
+    ))
+    await db.commit()
+    
+    return None
+
+
+# ── Skills Management Endpoints ─────────────────────────────────────────────────
+
+class SkillCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    category: Optional[str] = None
+    synonyms: Optional[str] = None
+    is_popular: bool = False
+    description: Optional[str] = None
+
+
+class SkillUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    category: Optional[str] = None
+    synonyms: Optional[str] = None
+    is_popular: Optional[bool] = None
+    description: Optional[str] = None
+
+
+@router.post("/admin/skills")
+async def create_skill(
+    body: SkillCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — create a new skill for the taxonomy."""
+    # Check if skill already exists
+    existing = (await db.execute(
+        select(Skill).where(Skill.name == body.name)
+    )).scalar_one_or_none()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Skill with this name already exists")
+    
+    skill = Skill(
+        name=body.name,
+        category=body.category,
+        synonyms=body.synonyms,
+        is_popular=body.is_popular,
+        description=body.description,
+    )
+    
+    db.add(skill)
+    await db.commit()
+    await db.refresh(skill)
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action="Skill Created",
+        description=f"Created new skill: {skill.name}",
+    ))
+    await db.commit()
+    
+    return {
+        "id": skill.id,
+        "name": skill.name,
+        "category": skill.category,
+        "synonyms": skill.synonyms,
+        "is_popular": skill.is_popular,
+        "description": skill.description,
+    }
+
+
+@router.get("/admin/skills")
+async def list_skills(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    is_popular: Optional[bool] = Query(None, description="Filter by popularity"),
+    search: Optional[str] = Query(None, description="Search by name"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — list skills with optional filtering."""
+    query = select(Skill)
+    
+    if category:
+        query = query.where(Skill.category == category)
+    if is_popular is not None:
+        query = query.where(Skill.is_popular == is_popular)
+    if search:
+        query = query.where(Skill.name.ilike(f"%{search}%"))
+    
+    query = query.order_by(Skill.name).limit(limit).offset(offset)
+    result = await db.execute(query)
+    skills = result.scalars().all()
+    
+    return {
+        "skills": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "category": s.category,
+                "synonyms": s.synonyms,
+                "is_popular": s.is_popular,
+                "description": s.description,
+            }
+            for s in skills
+        ],
+        "count": len(skills),
+    }
+
+
+@router.get("/admin/skills/categories")
+async def get_skill_categories(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — get all unique skill categories."""
+    result = await db.execute(
+        select(Skill.category).where(Skill.category.isnot(None)).distinct()
+    )
+    categories = [c[0] for c in result.all() if c[0]]
+    
+    return {"categories": sorted(categories)}
+
+
+@router.patch("/admin/skills/{skill_id}")
+async def update_skill(
+    skill_id: str,
+    body: SkillUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — update a skill."""
+    skill = (await db.execute(
+        select(Skill).where(Skill.id == skill_id)
+    )).scalar_one_or_none()
+    
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    
+    # Check name uniqueness if updating name
+    if body.name and body.name != skill.name:
+        existing = (await db.execute(
+            select(Skill).where(Skill.name == body.name)
+        )).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=400, detail="Skill with this name already exists")
+    
+    # Update provided fields
+    update_data = body.model_dump(exclude_none=True)
+    for field, value in update_data.items():
+        setattr(skill, field, value)
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action="Skill Updated",
+        description=f"Updated skill: {skill.name}",
+    ))
+    await db.commit()
+    await db.refresh(skill)
+    
+    return {
+        "id": skill.id,
+        "name": skill.name,
+        "category": skill.category,
+        "synonyms": skill.synonyms,
+        "is_popular": skill.is_popular,
+        "description": skill.description,
+    }
+
+
+@router.delete("/admin/skills/{skill_id}", status_code=204)
+async def delete_skill(
+    skill_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — delete a skill."""
+    skill = (await db.execute(
+        select(Skill).where(Skill.id == skill_id)
+    )).scalar_one_or_none()
+    
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    
+    await db.delete(skill)
+    
+    db.add(ActivityLog(
+        user_id=user.id,
+        action="Skill Deleted",
+        description=f"Deleted skill: {skill.name}",
+    ))
+    await db.commit()
+    
+    return None
+
+
+@router.get("/skills/search")
+async def search_skills(
+    query: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Search skills by name or synonyms (for custom job form autocomplete)."""
+    search_pattern = f"%{query}%"
+    
+    result = await db.execute(
+        select(Skill).where(
+            or_(
+                Skill.name.ilike(search_pattern),
+                Skill.synonyms.ilike(search_pattern)
+            )
+        ).order_by(Skill.is_popular.desc(), Skill.name).limit(limit)
+    )
+    skills = result.scalars().all()
+    
+    return {
+        "skills": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "category": s.category,
+            }
+            for s in skills
+        ],
+        "count": len(skills),
+    }
+
+
+# ── Location Data Endpoints ─────────────────────────────────────────────────────
+
+@router.get("/locations/states")
+async def get_india_states(
+    user: User = Depends(get_current_user),
+):
+    """Get list of all Indian states and union territories for custom job form."""
+    return {"states": get_states()}
+
+
+@router.get("/locations/cities")
+async def get_india_cities(
+    state: str = Query(..., description="State name"),
+    user: User = Depends(get_current_user),
+):
+    """Get list of cities for a given Indian state."""
+    cities = get_cities(state)
+    return {
+        "state": state,
+        "cities": cities,
+        "count": len(cities),
+    }
+
+
+@router.get("/locations/all")
+async def get_all_india_locations(
+    user: User = Depends(get_current_user),
+):
+    """Get complete state-to-cities mapping for India."""
+    return get_all_locations()
+
+
+# ── Custom Job Analytics Endpoints ────────────────────────────────────────────
+
+@router.get("/admin/analytics/custom-jobs")
+async def get_custom_job_analytics(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — get analytics for custom jobs vs imported jobs."""
+    
+    # Count jobs by source
+    total_jobs = (await db.execute(select(func.count(Job.id)))).scalar() or 0
+    custom_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.source == "custom")
+    )).scalar() or 0
+    imported_jobs = total_jobs - custom_jobs
+    
+    # Count custom jobs by publication status
+    custom_published = (await db.execute(
+        select(func.count(Job.id)).where(Job.source == "custom", Job.publication_status == "published")
+    )).scalar() or 0
+    custom_draft = (await db.execute(
+        select(func.count(Job.id)).where(Job.source == "custom", Job.publication_status == "draft")
+    )).scalar() or 0
+    custom_scheduled = (await db.execute(
+        select(func.count(Job.id)).where(Job.source == "custom", Job.publication_status == "scheduled")
+    )).scalar() or 0
+    
+    # Count applications by method (from UserJobMatch)
+    email_applied = (await db.execute(
+        select(func.count(UserJobMatch.id)).where(UserJobMatch.application_method == "email")
+    )).scalar() or 0
+    google_form_applied = (await db.execute(
+        select(func.count(UserJobMatch.id)).where(UserJobMatch.application_method == "google_form")
+    )).scalar() or 0
+    portal_applied = (await db.execute(
+        select(func.count(UserJobMatch.id)).where(UserJobMatch.application_method == "portal")
+    )).scalar() or 0
+    linkedin_applied = (await db.execute(
+        select(func.count(UserJobMatch.id)).where(UserJobMatch.application_method == "linkedin")
+    )).scalar() or 0
+    phone_applied = (await db.execute(
+        select(func.count(UserJobMatch.id)).where(UserJobMatch.application_method == "phone")
+    )).scalar() or 0
+    manual_applied = (await db.execute(
+        select(func.count(UserJobMatch.id)).where(UserJobMatch.application_method == "manual")
+    )).scalar() or 0
+    
+    return {
+        "job_sources": {
+            "total_jobs": total_jobs,
+            "custom_jobs": custom_jobs,
+            "imported_jobs": imported_jobs,
+            "custom_percentage": round((custom_jobs / total_jobs * 100) if total_jobs > 0 else 0, 1),
+        },
+        "custom_job_publication": {
+            "published": custom_published,
+            "draft": custom_draft,
+            "scheduled": custom_scheduled,
+        },
+        "applications_by_method": {
+            "email": email_applied,
+            "google_form": google_form_applied,
+            "portal": portal_applied,
+            "linkedin": linkedin_applied,
+            "phone": phone_applied,
+            "manual": manual_applied,
+        },
+    }
+
+
+@router.get("/admin/analytics/dashboard")
+async def get_admin_dashboard_analytics(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Admin-only — comprehensive dashboard analytics."""
+    
+    # Job counts by status
+    total_jobs = (await db.execute(select(func.count(Job.id)))).scalar() or 0
+    pending_review = (await db.execute(
+        select(func.count(Job.id)).where(Job.review_status == "pending_review")
+    )).scalar() or 0
+    approved_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.review_status == "approved")
+    )).scalar() or 0
+    rejected_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.review_status == "rejected")
+    )).scalar() or 0
+    
+    # Lifecycle counts
+    active_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.lifecycle_status == "active")
+    )).scalar() or 0
+    expired_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.lifecycle_status == "expired")
+    )).scalar() or 0
+    archived_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.lifecycle_status == "archived")
+    )).scalar() or 0
+    
+    # Source breakdown
+    custom_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.source == "custom")
+    )).scalar() or 0
+    imported_jobs = total_jobs - custom_jobs
+    
+    # Application method breakdown
+    email_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.primary_application_method == "email")
+    )).scalar() or 0
+    google_form_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.primary_application_method == "google_form")
+    )).scalar() or 0
+    portal_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.primary_application_method == "portal")
+    )).scalar() or 0
+    linkedin_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.primary_application_method == "linkedin")
+    )).scalar() or 0
+    phone_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.primary_application_method == "phone")
+    )).scalar() or 0
+    no_contact_jobs = (await db.execute(
+        select(func.count(Job.id)).where(Job.primary_application_method == "no_contact")
+    )).scalar() or 0
+    
+    return {
+        "job_review_status": {
+            "total": total_jobs,
+            "pending_review": pending_review,
+            "approved": approved_jobs,
+            "rejected": rejected_jobs,
+        },
+        "job_lifecycle": {
+            "active": active_jobs,
+            "expired": expired_jobs,
+            "archived": archived_jobs,
+        },
+        "job_sources": {
+            "custom": custom_jobs,
+            "imported": imported_jobs,
+        },
+        "application_methods": {
+            "email": email_jobs,
+            "google_form": google_form_jobs,
+            "portal": portal_jobs,
+            "linkedin": linkedin_jobs,
+            "phone": phone_jobs,
+            "no_contact": no_contact_jobs,
+        },
+    }
 
 
 @router.get("/stats/dashboard")
