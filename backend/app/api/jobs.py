@@ -75,6 +75,8 @@ def _serialize_job(job: Job, match: UserJobMatch) -> dict:
         "experience_badge": match.experience_badge,
         "match_breakdown": match.match_breakdown,
         "score_suggestions": match.score_suggestions,
+        "missing_skills_detail": match.missing_skills_detail or [],
+        "apply_probability": match.apply_probability,
         "is_recommended": match.is_recommended,
         "status": match.status,
         "archive_reason": match.archive_reason,

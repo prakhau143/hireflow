@@ -81,6 +81,29 @@ def compute_health_score(user: User, best_resume_ats: int | None) -> dict:
     }
 
 
+# ---------------------------------------------------------------- missing-fields bell
+
+# The specific fields the notification bell nudges on — narrower and more concrete
+# than the health-score breakdown above (which scores whole sections, not fields).
+_BELL_CHECKLIST = [
+    ("Expected Salary", lambda u: bool(u.expected_salary)),
+    ("Notice Period", lambda u: bool(u.notice_period)),
+    ("Current Company", lambda u: bool(u.current_company)),
+    ("Portfolio", lambda u: bool(u.portfolio_url)),
+    ("Github", lambda u: bool(u.github_url)),
+    ("Certificates", lambda u: len(u.certifications or []) > 0),
+]
+
+
+def compute_missing_profile_fields(user: User) -> dict:
+    """Complete-profile % + exactly which of the checklist fields are still missing,
+    for the navbar notification bell (Point 14: 'Complete profile 92%' + field list)."""
+    present = [check(user) for _, check in _BELL_CHECKLIST]
+    missing = [label for (label, _), ok in zip(_BELL_CHECKLIST, present) if not ok]
+    percent = round(sum(present) / len(present) * 100) if present else 100
+    return {"complete_percent": percent, "missing_fields": missing}
+
+
 # ---------------------------------------------------------------- AI career insights
 
 async def generate_career_insights(user: User, best_resume_ats: int | None, health_score: int) -> dict:

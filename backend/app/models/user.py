@@ -57,6 +57,7 @@ class User(Base):
     experience_timeline: Mapped[Optional[List]] = mapped_column(JSON, nullable=True) # [{title, company, start, end, current, description}]
     projects: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)            # [{name, description, tech, github, demo}]
     certifications: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)      # [{name, issuer, year}]
+    education: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)           # [{degree, institution, start, end, grade}]
 
     # Career goals — feeds the recommendation engine
     dream_companies: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)

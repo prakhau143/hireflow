@@ -34,6 +34,7 @@ export interface User {
   experience_timeline?: ExperienceEntry[] | null
   projects?: ProjectEntry[] | null
   certifications?: CertificationEntry[] | null
+  education?: EducationEntry[] | null
   dream_companies?: string[] | null
   preferred_domains?: string[] | null
   target_salary?: string | null
@@ -62,6 +63,14 @@ export interface CertificationEntry {
   year?: number | string
 }
 
+export interface EducationEntry {
+  degree: string
+  institution: string
+  start?: string
+  end?: string
+  grade?: string
+}
+
 export interface Job {
   id: string
   title: string
@@ -82,6 +91,8 @@ export interface Job {
   match_score?: number
   matched_skills?: string[]
   missing_skills?: string[]
+  missing_skills_detail?: { skill: string; learn_time: string }[]
+  apply_probability?: number
   ai_summary?: string
   ai_analysis?: string
   smart_tags: string[]
@@ -157,9 +168,13 @@ export interface Resume {
   certificates_extracted?: ResumeCertificate[] | null
   skill_intelligence?: SkillIntelligence[] | null
   github_detected?: string | null
+  linkedin_detected?: string | null
   portfolio_detected?: string | null
   total_experience_computed?: string | null
   section_scores?: Record<string, number> | null
+  achievements?: string[] | null
+  languages_spoken?: string[] | null
+  onboarding_fields?: Record<string, { value: string | number | null; confidence: number }> | null
 }
 
 export interface SmtpConfig {
@@ -215,9 +230,11 @@ export interface AnalyticsData {
 export type Theme = 'dark' | 'light'
 
 export interface FilterState {
-  experience?: string
-  location_type?: string
+  experience_min?: number
+  experience_max?: number
+  locations?: string[]          // city names and/or 'remote' | 'hybrid' | 'onsite'
   skills?: string[]
+  skills_mode?: 'AND' | 'OR'
   match_score?: number
   search?: string
   search_by?: 'role' | 'skill' | 'company' | 'experience'

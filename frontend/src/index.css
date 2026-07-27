@@ -141,3 +141,35 @@
   50% { transform: translateY(-6px); }
 }
 .float { animation: float 3s ease-in-out infinite; }
+
+/* Dual-thumb range slider: two <input type=range> stacked on the same track.
+   The track/rail is click-through (pointer-events: none) so only whichever
+   thumb is physically under the cursor captures the drag. */
+.range-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+.range-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--accent);
+  border: 2px solid var(--background);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+.range-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--accent);
+  border: 2px solid var(--background);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+.range-thumb::-moz-range-track { background: transparent; }

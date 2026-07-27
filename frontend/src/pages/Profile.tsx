@@ -5,14 +5,14 @@ import {
   Upload, Download, Eye, Share2, Pencil, Save, X, Plus, Trash2, Star,
   MapPin, Briefcase, CheckCircle2, FolderGit2, Globe, Terminal, Code2, BookOpen,
   Target, Trophy, Sparkles, Brain, ShieldCheck, Link2, ExternalLink,
-  Loader2, RefreshCw, Award, Building2, Wallet, MessageSquare,
+  Loader2, RefreshCw, Award, Building2, Wallet, MessageSquare, GraduationCap,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
-import type { User, ExperienceEntry, ProjectEntry, CertificationEntry } from '@/types'
+import type { User, ExperienceEntry, ProjectEntry, CertificationEntry, EducationEntry } from '@/types'
 import CareerIntelligenceCard from '@/components/profile/CareerIntelligenceCard'
 import WeeklyGoalsCard from '@/components/profile/WeeklyGoalsCard'
 
@@ -234,25 +234,26 @@ export default function Profile() {
 
       <CompletionCard health={health} loading={healthLoading} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* LEFT — main content */}
-        <div className="xl:col-span-2 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* LEFT — Professional / Projects / Experience / Skills / Education / Certifications */}
+        <div className="space-y-5">
           <ProfessionalInfoCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
-          <SkillsMatrixCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
-          <ExperienceTimelineCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
           <ProjectsCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
+          <ExperienceTimelineCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
+          <SkillsMatrixCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
+          <EducationCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
+          <CertificationsCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
         </div>
 
-        {/* RIGHT — sidebar */}
+        {/* RIGHT — AI Insights / Weekly Goals / Resume Health / Career Intelligence / Interview Readiness */}
         <div className="space-y-5">
-          <CareerGoalsCard user={user} onSave={patch => saveProfile.mutate(patch)} />
-          <CertificationsCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
-          <SocialProfilesCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
+          <AICareerAdvisorCard hasData={(user.skills?.length ?? 0) > 0} />
+          <WeeklyGoalsCard />
           <ResumeIntelligenceSummary bestResume={bestResume} bestVersion={bestVersion} />
           <CareerIntelligenceCard />
-          <WeeklyGoalsCard />
-          <AICareerAdvisorCard hasData={(user.skills?.length ?? 0) > 0} />
           <PortfolioHealthCard user={user} />
+          <CareerGoalsCard user={user} onSave={patch => saveProfile.mutate(patch)} />
+          <SocialProfilesCard user={user} onSave={patch => saveProfile.mutate(patch)} saving={saveProfile.isPending} />
         </div>
       </div>
 
@@ -291,6 +292,12 @@ function Hero({ user, health, healthLoading, bestResume, onUploadClick, onShare 
               {user.current_location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{user.current_location}</span>}
               {user.years_experience != null && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{user.years_experience} yrs experience</span>}
             </div>
+            {((user.preferred_domains?.length ?? 0) > 0 || user.target_salary) && (
+              <p className="flex items-center gap-1.5 text-xs text-yellow-400/80 mt-1.5">
+                <Trophy className="w-3 h-3 shrink-0" />
+                Aiming for: {[user.preferred_domains?.slice(0, 2).join(', '), user.target_salary].filter(Boolean).join(' · ')}
+              </p>
+            )}
           </div>
         </div>
 
@@ -703,6 +710,56 @@ function CertificationsCard({ user, onSave, saving }: { user: User; onSave: (p: 
       {editing && (
         <button onClick={() => setRows([...rows, { name: '', issuer: '', year: new Date().getFullYear() }])}
           className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80"><Plus className="w-3.5 h-3.5" /> Add certification</button>
+      )}
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Education
+// ─────────────────────────────────────────────────────────────────────────────
+function EducationCard({ user, onSave, saving }: { user: User; onSave: (p: Partial<User>) => void; saving: boolean }) {
+  const [editing, setEditing] = useState(false)
+  const [rows, setRows] = useState<EducationEntry[]>([])
+  useEffect(() => { setRows(user.education ?? []) }, [user, editing])
+
+  function update(i: number, patch: Partial<EducationEntry>) { setRows(rows.map((r, ri) => ri === i ? { ...r, ...patch } : r)) }
+  function save() { onSave({ education: rows } as any); setEditing(false) }
+
+  return (
+    <Card title="Education" icon={GraduationCap} iconColor="text-blue-400"
+      action={<EditToggle editing={editing} onToggle={() => setEditing(!editing)} onSave={save} saving={saving} />}>
+      {rows.length === 0 && !editing ? (
+        <p className="text-muted-foreground text-xs">No education entries yet.</p>
+      ) : (
+        <div className="space-y-0">
+          {rows.map((r, i) => (
+            <div key={i} className="relative pl-5 pb-5 last:pb-0 border-l border-border last:border-transparent">
+              <div className="absolute -left-[5px] top-0.5 w-2.5 h-2.5 rounded-full bg-blue-400 border-2 border-card" />
+              {editing ? (
+                <div className="grid grid-cols-2 gap-2 -mt-1">
+                  <Field label="Degree" value={r.degree} onChange={v => update(i, { degree: v })} placeholder="B.Tech Computer Science" />
+                  <Field label="Institution" value={r.institution} onChange={v => update(i, { institution: v })} />
+                  <Field label="Start" value={r.start ?? ''} onChange={v => update(i, { start: v })} placeholder="2018" />
+                  <Field label="End" value={r.end ?? ''} onChange={v => update(i, { end: v })} placeholder="2022" />
+                  <Field label="Grade" value={r.grade ?? ''} onChange={v => update(i, { grade: v })} placeholder="e.g. 8.5 CGPA" />
+                  <button onClick={() => setRows(rows.filter((_, ri) => ri !== i))}
+                    className="col-span-2 text-xs text-red-400/70 hover:text-red-400 flex items-center gap-1 justify-end"><Trash2 className="w-3 h-3" /> Remove</button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm text-foreground/85 font-medium">{r.degree}</p>
+                  <p className="text-xs text-muted-foreground">{r.institution}{(r.start || r.end) ? ` · ${r.start ?? ''}${r.start && r.end ? '–' : ''}${r.end ?? ''}` : ''}</p>
+                  {r.grade && <p className="text-xs text-muted-foreground mt-0.5">{r.grade}</p>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {editing && (
+        <button onClick={() => setRows([...rows, { degree: '', institution: '', start: '', end: '', grade: '' }])}
+          className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80"><Plus className="w-3.5 h-3.5" /> Add education</button>
       )}
     </Card>
   )

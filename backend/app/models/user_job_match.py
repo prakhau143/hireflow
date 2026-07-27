@@ -26,6 +26,8 @@ class UserJobMatch(Base):
     experience_badge: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
     match_breakdown: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)
     score_suggestions: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)
+    missing_skills_detail: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)  # [{skill, learn_time}]
+    apply_probability: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     is_recommended: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Per-user AI job-detail analysis (why_match, cover_letter, interview_questions, ...)

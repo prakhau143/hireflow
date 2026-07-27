@@ -275,6 +275,11 @@ export default function JobDetail() {
               </div>
             </div>
             <p className={cn('text-xs mt-1 font-medium', fit.color)}>{fit.desc}</p>
+            {job.apply_probability != null && (
+              <p className="text-[10px] text-muted-foreground mt-1.5" title="Estimate derived from the match score — not a guarantee">
+                Apply probability: <span className="text-foreground/80 font-semibold">{job.apply_probability}%</span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -488,9 +493,15 @@ export default function JobDetail() {
                     <XCircle className="w-3.5 h-3.5" /> Missing skills ({job.missing_skills!.length} gaps)
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {job.missing_skills!.map(s => (
-                      <span key={s} className="text-sm px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">{s}</span>
-                    ))}
+                    {job.missing_skills!.map(s => {
+                      const detail = job.missing_skills_detail?.find(d => d.skill === s)
+                      return (
+                        <span key={s} className="text-sm px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-1.5">
+                          {s}
+                          {detail && <span className="text-[10px] text-red-400/60">· {detail.learn_time}</span>}
+                        </span>
+                      )
+                    })}
                   </div>
                 </div>
               )}

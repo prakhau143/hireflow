@@ -144,11 +144,17 @@ export default function JobCard({ job, index = 0, compareMode, isCompared, onCom
               'text-[10px] px-2 py-0.5 rounded-full border font-medium',
               job.experience_badge === 'Perfect Experience Match'
                 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                : job.experience_badge.startsWith('Growth')
+                : job.experience_badge.startsWith('Needs')
                 ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20'
                 : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
             )}>
               {job.experience_badge}
+            </span>
+          )}
+          {job.apply_probability != null && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium text-muted-foreground border-border"
+              title="Estimate derived from the match score — not a guarantee">
+              Apply: {job.apply_probability}%
             </span>
           )}
           {job.application_type && job.application_type !== 'email' && (

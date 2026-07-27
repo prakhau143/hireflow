@@ -39,8 +39,14 @@ class Resume(Base):
     certificates_extracted: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)  # [{name, issuer}]
     skill_intelligence: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)    # [{skill, category, years, confidence, last_used}]
     github_detected: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    linkedin_detected: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     portfolio_detected: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     total_experience_computed: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # e.g. "3 Years 4 Months" — pure date arithmetic, no AI
+    achievements: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)     # quantified bullet points, extracted verbatim
+    languages_spoken: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True) # e.g. ["English", "Hindi"]
+    # Confidence-scored onboarding-relevant fields — {field: {"value": ..., "confidence": 0-100}}
+    # so onboarding can auto-accept >=80% and prompt "Is this correct?" below that.
+    onboarding_fields: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(

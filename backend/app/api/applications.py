@@ -24,9 +24,11 @@ from app.models.smtp import SmtpConfig
 from app.models.smtp_log import SmtpLog
 from app.models.application import Application
 from app.models.activity_log import ActivityLog
+from app.models.user_job_match import UserJobMatch
 from app.utils.auth import get_current_user
 from app.utils.encryption import decrypt_password
 from app.services import application_service as agent
+from app.services.analytics_service import _user_jobs
 from app.services.system_email_service import send_system_email
 
 router = APIRouter(prefix="/applications", tags=["applications"])
@@ -80,9 +82,10 @@ async def prepare(body: PrepareRequest, db: AsyncSession = Depends(get_db), user
         raise HTTPException(400, "No jobs selected")
     job_ids = body.job_ids[:10]
 
-    jobs = (await db.execute(
-        select(Job).where(Job.user_id == user.id, Job.id.in_(job_ids))
-    )).scalars().all()
+    # Job facts + this user's personalized match merged onto one object — job.status,
+    # job.match_score etc. below resolve exactly as if they still lived on Job directly.
+    wanted = set(job_ids)
+    jobs = [j for j in await _user_jobs(db, user.id) if j.id in wanted]
     templates = (await db.execute(
         select(EmailTemplate).where(EmailTemplate.user_id == user.id)
     )).scalars().all()
@@ -257,8 +260,12 @@ async def _process_queue(user_id: str, smtp_id: str):
                 job = (await db.execute(select(Job).where(Job.id == app_row.job_id))).scalar_one_or_none()
                 job_label = app_row.to_email
                 if job:
-                    job.status = "applied"
-                    job.emails_generated = (job.emails_generated or 0) + 1
+                    match = (await db.execute(select(UserJobMatch).where(
+                        UserJobMatch.user_id == user_id, UserJobMatch.job_id == job.id
+                    ))).scalar_one_or_none()
+                    if match:
+                        match.status = "applied"
+                        match.emails_generated = (match.emails_generated or 0) + 1
                     job_label = f"{job.title} at {job.company}"
                 db.add(SmtpLog(user_id=user_id, smtp_id=smtp_id, action="email_sent", status="success",
                                message=f"Application sent to {app_row.to_email}"))

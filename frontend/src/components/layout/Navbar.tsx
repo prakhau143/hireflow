@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Sun, Moon, Bell, ChevronDown, User, FileText, Settings, LogOut } from 'lucide-react'
+import { Search, Sun, Moon, Bell, ChevronDown, User, FileText, Settings, LogOut, CheckCircle2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/store/useAppStore'
 import { cn } from '@/lib/utils'
 import { Link, useNavigate } from 'react-router-dom'
 import Logo from '@/components/ui/Logo'
+import api from '@/lib/api'
 
 const searchCategories = ['Role', 'Skill', 'Company', 'Experience']
+
+interface MissingFields { complete_percent: number; missing_fields: string[] }
 
 export default function Navbar() {
   const { theme, toggleTheme, user, logout } = useAppStore()
@@ -15,6 +19,14 @@ export default function Navbar() {
   const [searchBy, setSearchBy] = useState('Role')
   const [showDropdown, setShowDropdown] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+
+  const { data: missing } = useQuery<MissingFields>({
+    queryKey: ['missing-fields'],
+    queryFn: async () => (await api.get('/api/users/me/missing-fields')).data,
+    staleTime: 5 * 60_000,
+  })
+  const hasMissing = (missing?.missing_fields.length ?? 0) > 0
 
   function handleLogout() {
     logout()
@@ -106,13 +118,61 @@ export default function Navbar() {
           </motion.button>
 
           {/* Notifications */}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            className="relative w-8 h-8 rounded-lg glass flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
-          </motion.button>
+          <div className="relative">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative w-8 h-8 rounded-lg glass flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Bell className="w-4 h-4" />
+              {hasMissing && <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />}
+            </motion.button>
+
+            <AnimatePresence>
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-12 glass rounded-2xl overflow-hidden min-w-[260px] shadow-2xl"
+                >
+                  <div className="px-4 py-3 border-b border-border">
+                    <p className="text-sm text-foreground font-semibold">
+                      Complete profile {missing?.complete_percent ?? 100}%
+                    </p>
+                    <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden mt-2">
+                      <div
+                        className={cn('h-full rounded-full', (missing?.complete_percent ?? 100) >= 80 ? 'bg-emerald-500' : (missing?.complete_percent ?? 100) >= 50 ? 'bg-yellow-500' : 'bg-red-500')}
+                        style={{ width: `${missing?.complete_percent ?? 100}%` }}
+                      />
+                    </div>
+                  </div>
+                  {hasMissing ? (
+                    <div className="py-1.5">
+                      {missing!.missing_fields.map(field => (
+                        <div key={field} className="flex items-center gap-2.5 px-4 py-2 text-sm text-muted-foreground">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                          Add {field}
+                        </div>
+                      ))}
+                      <Link
+                        to="/profile"
+                        onClick={() => setShowNotifications(false)}
+                        className="flex items-center justify-center gap-1.5 mx-3 my-1.5 px-3 py-2 rounded-xl bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 transition-colors"
+                      >
+                        Complete Profile
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Your profile is fully filled out
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* User Menu */}
           <div className="relative">
@@ -139,7 +199,6 @@ export default function Navbar() {
                   {[
                     { icon: User, label: 'Profile', to: '/profile' },
                     { icon: FileText, label: 'Resume', to: '/resume' },
-                    { icon: Bell, label: 'Notifications', to: '/notifications' },
                     { icon: Settings, label: 'Settings', to: '/settings' },
                   ].map(({ icon: Icon, label, to }) => (
                     <Link

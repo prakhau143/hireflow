@@ -21,6 +21,8 @@ services:
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "10080"
+      - key: ENCRYPTION_KEY
+        generateValue: true
     disk:
       name: hireflow-data
       mountPath: /opt/render/project/src/backend

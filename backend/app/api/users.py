@@ -31,6 +31,7 @@ class OnboardingRequest(BaseModel):
 class CompleteOnboardingRequest(BaseModel):
     phone: str
     current_role: str
+    current_company: Optional[str] = None
     current_location: str
     linkedin_url: str
     github_url: str
@@ -71,6 +72,7 @@ class ProfileUpdateRequest(BaseModel):
     experience_timeline: Optional[list[dict]] = None
     projects: Optional[list[dict]] = None
     certifications: Optional[list[dict]] = None
+    education: Optional[list[dict]] = None
     # Career goals
     dream_companies: Optional[list[str]] = None
     preferred_domains: Optional[list[str]] = None
@@ -135,6 +137,7 @@ class UserOut(BaseModel):
     experience_timeline: Optional[list] = None
     projects: Optional[list] = None
     certifications: Optional[list] = None
+    education: Optional[list] = None
     dream_companies: Optional[list] = None
     preferred_domains: Optional[list] = None
     target_salary: Optional[str] = None
@@ -191,6 +194,7 @@ async def complete_onboarding_transaction(
         user.portfolio_url = body.portfolio_url
         user.years_experience = body.years_experience
         user.current_role = body.current_role
+        user.current_company = body.current_company
         user.current_location = body.current_location
         user.skills = body.skills
         user.preferred_roles = body.preferred_roles
@@ -277,6 +281,15 @@ async def health_score(db: AsyncSession = Depends(get_db), user: User = Depends(
         select(func.max(Resume.ats_score)).where(Resume.user_id == user.id)
     )).scalar()
     return compute_health_score(user, best)
+
+
+@router.get("/me/missing-fields")
+async def missing_fields(user: User = Depends(get_current_user)):
+    """Notification-bell checklist — complete % + which specific fields are still
+    missing (Expected Salary, Notice Period, Current Company, Portfolio, Github,
+    Certificates). Narrower and more concrete than /health-score's section breakdown."""
+    from app.services.profile_service import compute_missing_profile_fields
+    return compute_missing_profile_fields(user)
 
 
 @router.get("/me/career-insights")

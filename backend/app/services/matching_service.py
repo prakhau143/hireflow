@@ -1,16 +1,25 @@
-"""Multi-factor AI Matching Engine (v2).
+"""Multi-factor AI Matching Engine (v3).
 
-Weighted formula:  Experience 25 · Skills 35 · Resume ATS 20 · Role 10 · Location 5 · Salary 5
-Experience is a primary eligibility factor: far-outside-range jobs score ~10 and are
-excluded from Recommended. Components without data are excluded and the total is
-normalized, so missing data never punishes the candidate.
+Experience is a HARD CAP, not an additive weight: the base score is computed from
+Skills 40 · Resume/ATS 25 · Projects 15 · Role 10 · Location 5 · Salary 5, then the
+final score is min(base, experience_cap) — no matter how high the base score is, a
+job outside the candidate's experience range never reads higher than the experience
+cap allows. Components without data are excluded and the base is normalized over
+what's available, so missing data never punishes the candidate — only a real
+experience mismatch does.
 
-Recommended rule:  experience > 75  AND  skills > 65  AND  overall > 80.
-Mandatory skills:  the first 2 job skills are must-haves — missing one caps overall at 70.
+Experience cap table (candidate has N years; job needs exp_min-exp_max):
+  within range, buffer>=1yr -> 100 · exactly at the floor -> 95
+  under-qualified: gap=1->50, gap=2->40, gap=3->30, gap=4->20, gap>=5->10 (floor)
+  over-qualified:  gap<=1->70, gap<=3->50, else->25
+
+Recommended rule:  experience cap >= 85  AND  skills > 60  (matches the Jobs page's
+Recommended / Need Learning / Future Fit buckets exactly).
+Mandatory skills:  the first 2 job skills are must-haves — missing one caps the base at 70.
 """
 from app.services.taxonomy import canonical_skills, role_family, canonical_location
 
-WEIGHTS = {"experience": 25, "skills": 35, "resume": 20, "role": 10, "location": 5, "salary": 5}
+BASE_WEIGHTS = {"skills": 40, "resume": 25, "projects": 15, "role": 10, "location": 5, "salary": 5}
 
 TIERS = [(90, "Perfect Fit"), (80, "Strong Fit"), (70, "Good Fit"), (55, "Stretch Role"), (0, "Weak Fit")]
 
@@ -32,25 +41,39 @@ def tier_for(score: float) -> str:
 
 
 def _experience_score(user_years: int | None, exp_min: int, exp_max: int) -> tuple[float | None, str | None]:
-    """The hard-rule curve: 3yr vs 3-5→100, 2-4→95, 1-3→90, 0-5→85, 4-6→55, 6-9→10."""
+    """Hard-cap table. Example (candidate has 2 yrs): job needs 0-2/1-3->100, 2-4->95,
+    3+->50, 4+->40, 5+->30, 6+->20, 8+->10 — verified point-for-point against spec."""
     if user_years is None:
         return None, None
-    if exp_min <= user_years <= exp_max:
-        pts = max(85, 100 - 5 * (user_years - exp_min))
-        return pts / 100.0, "Perfect Experience Match"
-    if user_years < exp_min:  # under-qualified
-        gap = exp_min - user_years
-        if gap <= 1:
-            return 0.55, "Slightly Senior Role"
-        if gap <= 2:
-            return 0.30, f"Growth Opportunity — {gap} yrs short"
-        return 0.10, f"Senior Role — {gap} yrs short"
-    gap = user_years - exp_max  # over-qualified
-    if gap <= 1:
-        return 0.70, "Junior Friendly"
-    if gap <= 3:
-        return 0.50, "Junior Role for You"
-    return 0.25, "Below Your Level"
+    if user_years >= exp_min:
+        if user_years > exp_max:  # over-qualified
+            gap = user_years - exp_max
+            if gap <= 1:
+                return 0.70, "Junior Friendly"
+            if gap <= 3:
+                return 0.50, "Junior Role for You"
+            return 0.25, "Below Your Level"
+        buffer = user_years - exp_min
+        if buffer >= 1:
+            return 1.00, "Perfect Experience Match"
+        return 0.95, "Perfect Experience Match"  # exactly at the floor of the range
+    gap = exp_min - user_years  # under-qualified
+    pts = max(10, 50 - 10 * (gap - 1))
+    return pts / 100.0, f"Needs {gap} more year{'s' if gap != 1 else ''} experience"
+
+
+def _projects_score(job_skills: list[str], user_projects: list | None) -> float | None:
+    """Fraction of job skills evidenced by the candidate's project tech stacks/descriptions."""
+    if not user_projects or not job_skills:
+        return None
+    text = " ".join(
+        " ".join(p.get("tech") or []) + " " + (p.get("description") or "")
+        for p in user_projects if isinstance(p, dict)
+    ).lower()
+    if not text.strip():
+        return None
+    hits = sum(1 for s in job_skills if s.lower() in text)
+    return hits / len(job_skills)
 
 
 def _skills_score(job_skills: list[str], user_set: set[str]) -> tuple[float, list[str], list[str], bool]:
@@ -117,40 +140,14 @@ def _role_score(job_title: str, user) -> float | None:
     return 0.5 if user_fams & adjacent.get(fam, set()) else 0.1
 
 
-def compute_match(job: dict, user, resume=None) -> dict:
-    """Score one job against the user. Returns score, tier, recommended flag,
-    experience badge, per-component breakdown and improvement suggestions."""
-    job_skills = canonical_skills(job.get("skills"))
-    user_set = {s.lower() for s in canonical_skills(list(user.skills or []))}
-
-    exp_frac, exp_badge = _experience_score(
-        user.years_experience,
-        int(job.get("experience_min") or 0),
-        int(job.get("experience_max") or 5),
-    )
-    skills_frac, matched, missing, mandatory_missing = _skills_score(job_skills, user_set)
-
-    resume_frac = None
-    if resume is not None and (resume.ats_score or 0) > 0:
-        ats = (resume.ats_score or 0) / 100.0
-        strong = {s.lower() for s in canonical_skills(list(resume.strong_skills or []))}
-        overlap = (sum(1 for s in job_skills if s.lower() in strong) / len(job_skills)) if job_skills else ats
-        resume_frac = min(1.0, 0.6 * ats + 0.4 * overlap)
-
-    components: dict[str, float | None] = {
-        "experience": exp_frac,
-        "skills": skills_frac if job_skills else None,
-        "resume": resume_frac,
-        "role": _role_score(job.get("role") or "", user),
-        "location": _location_score(job.get("location") or "", job.get("work_mode") or "", user),
-        "salary": None,  # needs expected-CTC preference (future profile field)
-    }
-    labels = {"experience": "Experience Fit", "skills": "Skills Match", "resume": "Resume ATS Alignment",
+def _base_score(components: dict[str, float | None], mandatory_missing: bool) -> tuple[int, list[dict], float, float]:
+    """Skills+Resume+Projects+Role+Location+Salary only — experience never enters this
+    sum, it's applied as an external cap by the caller."""
+    labels = {"skills": "Skills Match", "resume": "Resume ATS Alignment", "projects": "Project Relevance",
               "role": "Role Alignment", "location": "Location Fit", "salary": "Salary Fit"}
-
     earned = available = 0.0
     breakdown = []
-    for key, max_pts in WEIGHTS.items():
+    for key, max_pts in BASE_WEIGHTS.items():
         frac = components[key]
         item = {"key": key, "label": labels[key], "max": max_pts,
                 "available": frac is not None,
@@ -161,31 +158,87 @@ def compute_match(job: dict, user, resume=None) -> dict:
             available += max_pts
         breakdown.append(item)
 
-    score = round(earned / available * 100) if available else 0
+    base = round(earned / available * 100) if available else 0
     if components["skills"] is None:
-        score = min(score, 45)                      # unmatchable job — never looks perfect
+        base = min(base, 45)      # unmatchable job — never looks perfect
     if mandatory_missing:
-        score = min(score, 70)                      # must-have skill missing → hard cap
-    if exp_frac is not None and exp_frac < 0.85:
-        score = min(score, 60)                      # outside experience range → overall never above 60
+        base = min(base, 70)      # must-have skill missing → hard cap
+    return base, breakdown, earned, available
+
+
+def compute_match(job: dict, user, resume=None) -> dict:
+    """Score one job against the user. Experience is a HARD CAP applied after the
+    base (Skills+Resume+Projects+Role+Location+Salary) score — a job outside the
+    candidate's experience range can never read higher than the experience cap,
+    no matter how strong the rest of the match is. Returns score, tier, recommended
+    flag, experience badge, per-component breakdown and improvement suggestions."""
+    job_skills = canonical_skills(job.get("skills"))
+    user_set = {s.lower() for s in canonical_skills(list(user.skills or []))}
+
+    exp_frac, exp_badge = _experience_score(
+        user.years_experience,
+        int(job.get("experience_min") or 0),
+        int(job.get("experience_max") or 5),
+    )
+    skills_frac, matched, missing, mandatory_missing = _skills_score(job_skills, user_set)
+    projects_frac = _projects_score(job_skills, user.projects)
+
+    resume_frac = None
+    if resume is not None and (resume.ats_score or 0) > 0:
+        ats = (resume.ats_score or 0) / 100.0
+        strong = {s.lower() for s in canonical_skills(list(resume.strong_skills or []))}
+        overlap = (sum(1 for s in job_skills if s.lower() in strong) / len(job_skills)) if job_skills else ats
+        resume_frac = min(1.0, 0.6 * ats + 0.4 * overlap)
+
+    components: dict[str, float | None] = {
+        "skills": skills_frac if job_skills else None,
+        "resume": resume_frac,
+        "projects": projects_frac,
+        "role": _role_score(job.get("role") or "", user),
+        "location": _location_score(job.get("location") or "", job.get("work_mode") or "", user),
+        "salary": None,  # needs expected-CTC preference (future profile field)
+    }
+    base_score, breakdown, earned, available = _base_score(components, mandatory_missing)
 
     exp_pct = round((exp_frac or 0) * 100) if exp_frac is not None else None
+    exp_cap = exp_pct if exp_frac is not None else 100
+    score = min(base_score, exp_cap)  # the hard cap — "no matter what"
+
+    # Experience shown first in the breakdown for display, but — unlike every other
+    # row — it was never summed into base_score; it only ever caps the final number.
+    # max=100/score=pct keeps the same score/max=fraction invariant every other row
+    # has (frac*max/max=frac), so the frontend's progress-bar math needs no special case.
+    breakdown.insert(0, {
+        "key": "experience", "label": "Experience Fit", "max": 100, "is_cap": True,
+        "available": exp_frac is not None,
+        "score": exp_pct or 0,
+        "pct": exp_pct or 0,
+    })
+
     skill_pct = round(skills_frac * 100) if job_skills else None
-    recommended = bool(
-        exp_pct is not None and exp_pct > 75
-        and skill_pct is not None and skill_pct > 65
-        and score > 80
-    )
+    recommended = bool((exp_cap >= 85) and skill_pct is not None and skill_pct > 60)
+
+    # Every missing skill gets a learning-time estimate (not just the top score-improvers
+    # below) so the UI can show "Redis: 1-2 weeks" style chips for the full gap list.
+    missing_skills_detail = [
+        {"skill": skill, "learn_time": LEARN_TIME.get(skill.lower(), "2-4 weeks")}
+        for skill in missing
+    ]
+
+    # Simple, clearly-labeled estimate (not a real ML prediction) — dampens the raw
+    # score so it reads as a probability rather than a duplicate of the match score.
+    apply_probability = max(5, min(92, round(score * 0.85 + 5)))
 
     # Smart suggestions: projected score + learning time + priority
     suggestions = []
     if missing and job_skills and available:
         for skill in missing[:3]:
             new_frac, _, _, new_mand = _skills_score(job_skills, user_set | {skill.lower()})
-            new_earned = earned - (components["skills"] or 0) * WEIGHTS["skills"] + new_frac * WEIGHTS["skills"]
-            projected = round(new_earned / available * 100)
+            new_earned = earned - (components["skills"] or 0) * BASE_WEIGHTS["skills"] + new_frac * BASE_WEIGHTS["skills"]
+            new_base = round(new_earned / available * 100)
             if new_mand:
-                projected = min(projected, 70)
+                new_base = min(new_base, 70)
+            projected = min(new_base, exp_cap)  # learning a skill still can't beat the experience cap
             if projected > score:
                 suggestions.append({
                     "skill": skill, "projected": projected, "gain": projected - score,
@@ -202,6 +255,8 @@ def compute_match(job: dict, user, resume=None) -> dict:
         "breakdown": breakdown,
         "matched_skills": matched,
         "missing_skills": missing,
+        "missing_skills_detail": missing_skills_detail,
+        "apply_probability": apply_probability,
         "suggestions": suggestions[:3],
     }
 
@@ -244,6 +299,8 @@ async def sync_user_job_match(db, job, user, resume=None):
     existing.match_breakdown = match["breakdown"]
     existing.matched_skills = match["matched_skills"]
     existing.missing_skills = match["missing_skills"]
+    existing.missing_skills_detail = match["missing_skills_detail"]
+    existing.apply_probability = match["apply_probability"]
     existing.score_suggestions = match["suggestions"]
     return existing
 

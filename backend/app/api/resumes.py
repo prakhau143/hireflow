@@ -17,6 +17,37 @@ import io
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
 
+_LIGATURES = {"ﬁ": "fi", "ﬂ": "fl", "ﬀ": "ff", "ﬃ": "ffi", "ﬄ": "ffl",
+              "’": "'", "‘": "'", "“": '"', "”": '"'}
+
+
+def _clean_resume_text(text: str) -> str:
+    """Text Cleanup stage: normalize PDF-extraction artifacts before the AI ever sees the
+    text — ligature glyphs PyMuPDF leaves as-is, lone page-number lines, runs of blank
+    lines from page breaks. Keeps line structure otherwise intact (headings/sections
+    still need to read naturally for the AI extraction step)."""
+    import re
+    if not text:
+        return text
+    for bad, good in _LIGATURES.items():
+        text = text.replace(bad, good)
+    cleaned: list[str] = []
+    blank_run = 0
+    for line in text.split("\n"):
+        line = line.rstrip()
+        stripped = line.strip()
+        if re.fullmatch(r"(page\s+)?\d{1,4}(\s+of\s+\d{1,4})?", stripped, re.IGNORECASE):
+            continue
+        if not stripped:
+            blank_run += 1
+            if blank_run > 1:
+                continue
+        else:
+            blank_run = 0
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
+
 def _apply_deep_extraction(resume: Resume, ai_data: dict, raw_text: str) -> None:
     """Populate the Resume Intelligence Engine fields from one AI analysis pass."""
     entries, total_exp = enrich_experience_entries(ai_data.get("experience_entries"))
@@ -27,11 +58,15 @@ def _apply_deep_extraction(resume: Resume, ai_data: dict, raw_text: str) -> None
     resume.certificates_extracted = ai_data.get("certificates_extracted") or []
     resume.skill_intelligence = normalize_skill_intelligence(ai_data.get("skill_intelligence"))
     resume.contact_info = ai_data.get("contact_info")
+    resume.achievements = ai_data.get("achievements") or []
+    resume.languages_spoken = ai_data.get("languages_spoken") or []
+    resume.onboarding_fields = ai_data.get("onboarding_fields") or {}
 
     # Regex safety net — resumes almost always print these as literal URLs,
     # which a plain-text scan catches more reliably than free-form AI extraction.
-    regex_github, regex_portfolio = detect_links(raw_text)
+    regex_github, regex_linkedin, regex_portfolio = detect_links(raw_text)
     resume.github_detected = regex_github
+    resume.linkedin_detected = regex_linkedin
     resume.portfolio_detected = regex_portfolio
 
 
@@ -39,6 +74,7 @@ def _apply_deep_extraction(resume: Resume, ai_data: dict, raw_text: str) -> None
 async def resume_intelligence(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """Resume Intelligence dashboard: versions, trend, heatmap, gaps, roles, matching jobs."""
     from app.models.job import Job
+    from app.models.user_job_match import UserJobMatch
     from sqlalchemy import or_, and_
 
     resumes = (await db.execute(
@@ -90,17 +126,17 @@ async def resume_intelligence(db: AsyncSession = Depends(get_db), user: User = D
     skill_gaps = sorted(gap_map.values(), key=lambda g: 0 if g.get("importance") == "high" else 1)[:10]
 
     # Top matching approved jobs (best-resume relevance = the platform match score)
-    jobs = (await db.execute(
-        select(Job).where(
-            Job.user_id == user.id,
-            Job.status.notin_(("archived",)),
+    rows = (await db.execute(
+        select(Job, UserJobMatch).join(UserJobMatch, UserJobMatch.job_id == Job.id).where(
+            UserJobMatch.user_id == user.id,
+            UserJobMatch.status.notin_(("archived",)),
             or_(Job.review_status.is_(None), Job.review_status == "approved"),
-        ).order_by(Job.match_score.desc()).limit(5)
-    )).scalars().all()
+        ).order_by(UserJobMatch.match_score.desc()).limit(5)
+    )).all()
     top_jobs = [{
         "id": j.id, "title": j.title, "company": j.company,
-        "match_score": round(j.match_score or 0), "match_tier": j.match_tier,
-    } for j in jobs]
+        "match_score": round(m.match_score or 0), "match_tier": m.match_tier,
+    } for j, m in rows]
 
     return {
         "versions": versions,
@@ -202,8 +238,19 @@ async def upload_resume(
         try:
             import fitz  # PyMuPDF
             doc = fitz.open(stream=content, filetype="pdf")
-            raw_text = "\n".join(page.get_text() for page in doc)
+            page_text = "\n".join(page.get_text() for page in doc)
+            # Many resume templates hyperlink an icon or the word "Portfolio"/"LinkedIn"
+            # rather than printing the URL as visible text — get_text() alone misses
+            # those. Pull the actual link targets from the PDF's embedded annotations
+            # and append them so both the AI extraction and the regex fallback see them.
+            hyperlinks = [
+                link["uri"] for page in doc for link in page.get_links()
+                if link.get("uri", "").startswith("http")
+            ]
             doc.close()
+            if hyperlinks:
+                page_text += "\n\nLinks found in document: " + " ".join(dict.fromkeys(hyperlinks))
+            raw_text = _clean_resume_text(page_text)
         except Exception as e:
             print(f"PDF parsing error: {e}")
             raw_text = ""

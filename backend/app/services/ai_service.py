@@ -148,18 +148,6 @@ _BOUNDARY_RES = [re.compile(p, re.IGNORECASE) for p in [
     r"^\s*\d{1,2}[\).]\s+.{2,80}(hiring|developer|engineer|intern|analyst|designer|manager|executive|trainee|associate)",
 ]]
 
-# Job-specific email prefix → treat that line as a boundary too
-_JOB_EMAIL_RE = re.compile(
-    r"(?:career|hr|jobs?|talent|recruit|hiring|apply|work|cvs?|resumes?|placement)"
-    r"[a-zA-Z0-9._+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}",
-    re.IGNORECASE,
-)
-# Lines that are contact-detail rows — should NOT start a new boundary
-_CONTACT_LABEL_RE = re.compile(
-    r"^\s*(?:contact|apply|send|cv|resume|email|mail|reach|connect|share)\s*[:–\-]",
-    re.IGNORECASE,
-)
-
 
 def _clean_noise(text: str) -> str:
     """Remove WhatsApp/LinkedIn/Telegram noise lines. Preserve job content."""
@@ -208,33 +196,56 @@ _CONTACT_SIGNAL_RE = re.compile(
 )
 
 
-def _boundary_kind(stripped: str) -> str | None:
-    """Classify a line: 'strong' | 'weak' | None."""
+# Indian mobile numbers, with or without a +91/91 prefix, plus wa.me links —
+# counts as an end signal alongside email/Google Form/LinkedIn/apply links.
+_PHONE_RE = re.compile(r"(?:\+?91[\s\-]?)?[6-9]\d{9}\b|\bwa\.me/\d+", re.IGNORECASE)
+
+
+def _is_strong_start_marker(stripped: str) -> bool:
+    """Unambiguous new-post signals ('We're Hiring', 'Urgent Hiring', a numbered
+    list entry, a bare --- separator, ...) — these never legitimately appear
+    mid-post, so seeing one always force-closes whatever's being collected."""
     if not stripped:
-        return None
-    # Explicit separator lines (---, ===, ***)
+        return False
     if re.match(r"^[-=*~_]{3,}\s*$", stripped):
-        return "strong"
-    for pat in _STRONG_BOUNDARY_RES:
-        if pat.search(stripped):
-            return "strong"
-    for pat in _BOUNDARY_RES:
-        if pat.search(stripped):
-            return "weak"
-    # Short line with a job-specific email → possible new post header
-    # (but not contact-detail rows like "Apply: hr@...")
-    if _JOB_EMAIL_RE.search(stripped) and len(stripped) < 120 and not _CONTACT_LABEL_RE.match(stripped):
-        return "weak"
-    return None
+        return True
+    return any(pat.search(stripped) for pat in _STRONG_BOUNDARY_RES)
+
+
+def _is_any_start_marker(stripped: str) -> bool:
+    """Strong markers plus weaker labeled-field/CTA markers ('Role:', 'Position:',
+    'Company:', 'Opening:', 'Join Us', ...). Weak markers can OPEN a new block
+    from a cold state, but — unlike strong markers — never interrupt a block
+    already being collected, since these routinely appear inside a single
+    post's own body ('We're Hiring' + 'Company: X' + 'Join us!' must stay one
+    job, not three)."""
+    if _is_strong_start_marker(stripped):
+        return True
+    if re.search(r"\bjoin\s+us\b", stripped, re.IGNORECASE):
+        return True
+    return any(pat.search(stripped) for pat in _BOUNDARY_RES)
+
+
+def _is_end_signal(stripped: str) -> bool:
+    """A line that completes the job currently being collected: an email, a
+    phone number, or any link (Google Form, LinkedIn apply, or a generic
+    company apply link — all of them are just an http(s) URL)."""
+    if not stripped:
+        return False
+    return bool(_CONTACT_SIGNAL_RE.search(stripped)) or bool(_PHONE_RE.search(stripped))
 
 
 def _segment_blocks(text: str) -> list[str]:
-    """Split cleaned text into job blocks using two-tier boundary detection."""
+    """Marker-based state machine, not "email found → split": find a start
+    marker, collect every line — blank lines included, never a split point —
+    until an end signal (email/phone/Google Form/LinkedIn apply/company apply
+    link) closes the job, then look for the next marker. A strong marker seen
+    mid-collection force-closes the current (contact-less) post rather than
+    losing it or merging it into the next one."""
     lines = text.splitlines()
-    blocks: list[list[str]] = []
+    blocks: list[str] = []
     current: list[str] = []
-    cur_words = 0
-    cur_has_contact = False
+    collecting = False
 
     def _flush():
         chunk = "\n".join(current).strip()
@@ -243,29 +254,26 @@ def _segment_blocks(text: str) -> list[str]:
 
     for line in lines:
         stripped = line.strip()
-        kind = _boundary_kind(stripped)
-        split = False
-        if kind and current:
-            if kind == "strong":
-                split = cur_words >= 8            # don't split off a bare header
-            else:
-                # weak boundary: only if current block already looks complete
-                split = cur_words >= 40 or cur_has_contact
-        if split:
+
+        if collecting and current and _is_strong_start_marker(stripped):
             _flush()
-            current = [line]
-            cur_words = len(stripped.split())
-            cur_has_contact = bool(_CONTACT_SIGNAL_RE.search(stripped))
-        else:
-            current.append(line)
-            cur_words += len(stripped.split())
-            if stripped and _CONTACT_SIGNAL_RE.search(stripped):
-                cur_has_contact = True
+            current, collecting = [line], True
+            continue
+
+        if not collecting:
+            if _is_any_start_marker(stripped):
+                current, collecting = [line], True
+            continue  # discard anything before the first marker — not part of any job
+
+        current.append(line)
+        if _is_end_signal(stripped):
+            _flush()
+            current, collecting = [], False
 
     if current:
         _flush()
 
-    # Fallback: no boundaries found → treat whole text as one block
+    # Fallback: no markers ever matched → treat the whole text as one block
     return blocks if blocks else ([text.strip()] if text.strip() else [])
 
 
@@ -712,7 +720,19 @@ Return a JSON object with these exact keys:
     {{"skill": "exact skill name as written", "category": "Programming | Framework | Cloud | AI/ML | Tool | Soft Skill",
       "years": <estimated years used, integer or null>, "confidence": <0-100 int — how sure you are this skill genuinely appears>,
       "last_used": "<estimated year this was last used, based on the most recent experience/project mentioning it, or null>"}}
-  ]
+  ],
+  "achievements": ["quantified accomplishment bullets extracted verbatim, e.g. 'Reduced API latency by 40%'"],
+  "languages_spoken": ["spoken/written languages the candidate lists, e.g. English, Hindi — not programming languages"],
+  "onboarding_fields": {{
+    "current_role": {{"value": "most recent job title or null", "confidence": <0-100 int>}},
+    "current_company": {{"value": "most recent employer or null", "confidence": <0-100 int>}},
+    "years_experience": {{"value": <integer total years of professional experience, or null>, "confidence": <0-100 int>}},
+    "current_location": {{"value": "city/state or null", "confidence": <0-100 int>}},
+    "phone": {{"value": "the exact phone number if printed, otherwise null", "confidence": <0-100 int>}},
+    "linkedin_url": {{"value": "the exact LinkedIn profile URL if printed in the resume, otherwise null", "confidence": <0-100 int>}},
+    "github_url": {{"value": "the exact GitHub profile URL if printed in the resume, otherwise null", "confidence": <0-100 int>}},
+    "portfolio_url": {{"value": "the exact personal website URL if printed in the resume, otherwise null", "confidence": <0-100 int>}}
+  }}
 }}
 
 Classify EVERY skill you find into exactly one category:
@@ -731,14 +751,16 @@ Focus on:
 5. Honest section scores grounded in the actual resume text
 6. 3-4 realistic role recommendations based on the resume's strongest signals
 7. Extract education/experience/projects/certificates exactly as written — do not invent data not present in the resume
-8. For experience "start"/"end", extract the date text as-is (e.g. "Feb 2025", "2022") — duration is computed separately, do not calculate it yourself"""
+8. For experience "start"/"end", extract the date text as-is (e.g. "Feb 2025", "2022") — duration is computed separately, do not calculate it yourself
+9. Confidence calibration for skill_intelligence and onboarding_fields: 90-100 = stated explicitly and unambiguously (e.g. a labeled "Phone:" line, a role title header), 60-89 = present but requires minor inference (e.g. inferring current_company from the most recent, undated experience entry), 30-59 = a weak guess from indirect context
+10. CRITICAL: if an onboarding_fields value is genuinely absent from the resume text (e.g. no LinkedIn URL is printed anywhere), its "value" MUST be the JSON literal null and confidence MUST be 0 — never echo back a placeholder, example, or template string from these instructions as if it were real data"""
 
     response = await _get_client().chat.completions.create(
         model=settings.GROQ_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
         response_format={"type": "json_object"},
-        max_tokens=3200,
+        max_tokens=3800,
     )
 
     return json.loads(response.choices[0].message.content)

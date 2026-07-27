@@ -91,13 +91,16 @@ def enrich_experience_entries(entries: list | None) -> tuple[list, str | None]:
 
 
 _GITHUB_RE = re.compile(r"(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9_\-]+/?", re.IGNORECASE)
+_LINKEDIN_RE = re.compile(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[A-Za-z0-9_\-]+/?", re.IGNORECASE)
 _URL_RE = re.compile(r"https?://[^\s,;)]+", re.IGNORECASE)
 
 
-def detect_links(raw_text: str) -> tuple[str | None, str | None]:
-    """Regex safety net for GitHub/portfolio links the AI might miss or mis-format."""
+def detect_links(raw_text: str) -> tuple[str | None, str | None, str | None]:
+    """Regex safety net for GitHub/LinkedIn/portfolio links the AI might miss or mis-format."""
     gh = _GITHUB_RE.search(raw_text or "")
     github = gh.group(0) if gh else None
+    li = _LINKEDIN_RE.search(raw_text or "")
+    linkedin = li.group(0) if li else None
     portfolio = None
     for url in _URL_RE.findall(raw_text or ""):
         low = url.lower()
@@ -105,7 +108,7 @@ def detect_links(raw_text: str) -> tuple[str | None, str | None]:
             continue
         portfolio = url.rstrip(".,;)")
         break
-    return github, portfolio
+    return github, linkedin, portfolio
 
 
 def normalize_skill_intelligence(items: list | None) -> list[dict]:
