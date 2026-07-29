@@ -5,6 +5,9 @@ from contextlib import asynccontextmanager
 import os
 from app.config import settings
 from app.database import create_tables
+
+# Create uploads directory before app initialization
+os.makedirs("uploads/resumes", exist_ok=True)
 # Import all models to ensure they're registered with Base.metadata
 from app.models.user import User
 from app.models.job import Job
@@ -36,6 +39,7 @@ from app.api.system_templates import router as system_templates_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Create uploads directory before app starts
     os.makedirs("uploads/resumes", exist_ok=True)
     await create_tables()
 
