@@ -21,6 +21,7 @@ import AdminUsers from '@/pages/admin/AdminUsers'
 import ReviewPanel from '@/pages/admin/ReviewPanel'
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalytics'
 import SystemEmailTemplates from '@/pages/admin/SystemEmailTemplates'
+import CustomJobs from '@/pages/admin/CustomJobs'
 import { useAppStore } from '@/store/useAppStore'
 
 const queryClient = new QueryClient({
@@ -106,6 +107,7 @@ export default function App() {
                   <Route path="/admin" element={<Dashboard />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
                   <Route path="/admin/review" element={<ReviewPanel />} />
+                  <Route path="/admin/custom-jobs" element={<CustomJobs />} />
                   <Route path="/admin/jobs" element={<Jobs />} />
                   <Route path="/admin/ai" element={<ImportJobs />} />
                   <Route path="/admin/templates" element={<Templates />} />

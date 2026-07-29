@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Briefcase, Archive, Mail, FileText,
   BarChart3, FileCode2, Activity, Settings, Users,
-  Import, Cpu, Database, ChevronLeft, Zap, ShieldCheck, MailPlus
+  Import, Cpu, Database, ChevronLeft, Zap, ShieldCheck, MailPlus, Plus
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { cn } from '@/lib/utils'
@@ -40,6 +40,7 @@ const adminNav = [
   { icon: Users, label: 'Users', to: '/admin/users' },
   { icon: Cpu, label: 'Import Jobs', to: '/admin/ai' },
   { icon: ShieldCheck, label: 'Review Queue', to: '/admin/review' },
+  { icon: Plus, label: 'Custom Jobs', to: '/admin/custom-jobs' },
   { icon: Import, label: 'All Jobs', to: '/admin/jobs' },
   { icon: FileCode2, label: 'Templates', to: '/admin/templates' },
   { icon: MailPlus, label: 'Email Templates', to: '/admin/email-templates' },
