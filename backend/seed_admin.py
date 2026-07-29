@@ -19,9 +19,9 @@ from app.database import AsyncSessionLocal, create_tables
 from app.models.user import User
 from app.utils.auth import hash_password
 
-ADMIN_NAME = os.getenv("ADMIN_NAME", "Ansh Gupta")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "ansh.gupta0625@gmail.com")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin@1234")
+ADMIN_NAME = os.getenv("ADMIN_NAME", "Prakhar Mittal")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "mittalprakhar504@gmail.com")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Hydrogen@123")
 
 
 async def seed():

@@ -89,7 +89,11 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(body.password, user.hashed_password or ""):
+    if not user:
+        print(f"[Login] User not found: {body.email}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not verify_password(body.password, user.hashed_password or ""):
+        print(f"[Login] Invalid password for: {body.email}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended — contact the administrator")
@@ -270,3 +274,39 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
     await db.commit()
 
     return {"message": "Password reset successful. You can now log in."}
+
+
+@router.post("/seed-admin")
+async def seed_admin(db: AsyncSession = Depends(get_db)):
+    """Seed or update admin account. For deployment setup only."""
+    ADMIN_NAME = "Ansh Gupta"
+    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "ansh.gupta0625@gmail.com")
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin@1234")
+
+    result = await db.execute(select(User).where(User.email == ADMIN_EMAIL))
+    user = result.scalar_one_or_none()
+
+    if user:
+        user.role = "admin"
+        user.hashed_password = hash_password(ADMIN_PASSWORD)
+        user.onboarding_complete = True
+        user.is_active = True
+        action = "promoted to admin (password reset)"
+    else:
+        user = User(
+            name=ADMIN_NAME,
+            email=ADMIN_EMAIL,
+            hashed_password=hash_password(ADMIN_PASSWORD),
+            role="admin",
+            onboarding_complete=True,
+        )
+        db.add(user)
+        action = "created"
+
+    await db.commit()
+    return {
+        "message": f"Super admin {action}",
+        "email": ADMIN_EMAIL,
+        "password": ADMIN_PASSWORD,
+        "role": "admin"
+    }
