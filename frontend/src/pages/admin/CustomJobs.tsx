@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Edit, Trash2, Eye, Search, Filter, Calendar, MapPin, Building2, DollarSign, Briefcase } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -44,7 +44,6 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://hireflow-api.onrender.
 export default function CustomJobs() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedJob, setSelectedJob] = useState<CustomJob | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit'>('list')
   const queryClient = useQueryClient()
@@ -308,7 +307,6 @@ function CustomJobForm({ mode, job, onCancel, onSuccess }: { mode: 'create' | 'e
   })
 
   const [skillInput, setSkillInput] = useState('')
-  const queryClient = useQueryClient()
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -401,7 +399,7 @@ function CustomJobForm({ mode, job, onCancel, onSuccess }: { mode: 'create' | 'e
 
       {/* Progress Steps */}
       <div className="flex items-center justify-between">
-        {steps.map((s, i) => (
+        {steps.map((_, i) => (
           <div key={i} className="flex items-center flex-1">
             <div className={cn(
               'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium',

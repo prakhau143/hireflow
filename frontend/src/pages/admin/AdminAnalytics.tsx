@@ -11,7 +11,6 @@ import {
 import ChartCard from '@/components/dashboard/ChartCard'
 import KpiCard from '@/components/dashboard/KpiCard'
 import { CHART_COLORS, axisTick, gridStroke, ChartTooltip } from '@/components/dashboard/chartTheme'
-import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 
 interface AdminAnalytics {

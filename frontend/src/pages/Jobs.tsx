@@ -288,7 +288,6 @@ const SORT_GROUPS: [string, string[]][] = [
   ['Company', ['Startup', 'MNC']],
   ['Apply Method', ['Fast Apply', 'Google Form', 'Company Portal']],
 ]
-const SORT_OPTS = SORT_GROUPS.flatMap(([, opts]) => opts)
 
 function sortJobs(jobs: Job[], sortBy: string, user: ReturnType<typeof useAppStore.getState>['user']): Job[] {
   const arr = [...jobs]

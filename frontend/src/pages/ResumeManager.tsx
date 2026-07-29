@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Plus, Zap, CheckCircle, XCircle, AlertCircle, Upload, Trash2, Briefcase, TrendingUp } from 'lucide-react'
+import { FileText, Plus, Zap, CheckCircle, XCircle, AlertCircle, Upload, Trash2, Briefcase } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { EmptyState, LoadingCards } from '@/components/ui/EmptyState'

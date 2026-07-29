@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  Users, Shield, User, Briefcase, MapPin, CheckCircle2, Clock, ChevronDown,
+  Users, Shield, Briefcase, CheckCircle2, Clock, ChevronDown,
   TrendingUp, BarChart3, PieChart as PieIcon, Layers, FileText, Mail,
 } from 'lucide-react'
 import { useState } from 'react'

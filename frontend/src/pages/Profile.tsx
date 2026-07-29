@@ -5,7 +5,7 @@ import {
   Upload, Download, Eye, Share2, Pencil, Save, X, Plus, Trash2, Star,
   MapPin, Briefcase, CheckCircle2, FolderGit2, Globe, Terminal, Code2, BookOpen,
   Target, Trophy, Sparkles, Brain, ShieldCheck, Link2, ExternalLink,
-  Loader2, RefreshCw, Award, Building2, Wallet, MessageSquare, GraduationCap,
+  Loader2, RefreshCw, Award, Building2, Wallet, GraduationCap,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -758,7 +758,7 @@ function EducationCard({ user, onSave, saving }: { user: User; onSave: (p: Parti
         </div>
       )}
       {editing && (
-        <button onClick={() => setRows([...rows, { degree: '', institution: '', start: '', end: '', grade: '' }])}
+        <button onClick={() => setRows([...rows, { degree: '', institution: '', start: '', end: '', grade: '', college: '', cgpa: '', year: '' }])}
           className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80"><Plus className="w-3.5 h-3.5" /> Add education</button>
       )}
     </Card>
@@ -1019,7 +1019,7 @@ function PortfolioHealthCard({ user }: { user: User }) {
 // ─────────────────────────────────────────────────────────────────────────────
 interface CoachMessage { role: 'system' | 'user' | 'assistant'; text: string; action?: string | null }
 
-function FloatingAIAssistant({ user, health, intelligence }: { user: User; health: HealthScore | undefined; intelligence: Intelligence | undefined }) {
+function FloatingAIAssistant({ health, intelligence }: { user: User; health: HealthScore | undefined; intelligence: Intelligence | undefined }) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [history, setHistory] = useState<CoachMessage[]>([])

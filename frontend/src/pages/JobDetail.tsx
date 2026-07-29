@@ -6,10 +6,10 @@ import {
   Zap, BookOpen, Target, Send, Star, AlertTriangle, Sparkles, Brain,
   FileText, MessageSquare, TrendingUp, ChevronDown, ChevronUp, Copy,
   Shield, GraduationCap, Building2, DollarSign, BarChart3, ExternalLink,
-  GitCompare, Loader2, RefreshCw
+  GitCompare, Loader2
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { cn, getMatchBg, getMatchRingColor, timeAgo } from '@/lib/utils'
+import { cn, getMatchRingColor, timeAgo } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
 import api from '@/lib/api'
 import type { Job } from '@/types'
@@ -187,7 +187,6 @@ export default function JobDetail() {
 
   const score    = job.match_score ?? 0
   const ringColor = getMatchRingColor(score)
-  const matchBg  = getMatchBg(score)
   const fit      = fitInfo(score)
 
   // Derived ATS scores (heuristic from job fields)

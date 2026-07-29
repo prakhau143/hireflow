@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, CheckCircle, XCircle, RefreshCw, Eye, EyeOff, Send, Settings, Server, Activity, Clock, AlertCircle, ExternalLink, Copy, Zap, ShieldAlert, ArrowRight } from 'lucide-react'
+import { Mail, CheckCircle, XCircle, RefreshCw, Eye, EyeOff, Send, Settings, Server, Activity, Clock, ExternalLink, Zap, ShieldAlert, ArrowRight } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
-import { EmptyState } from '@/components/ui/EmptyState'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
 

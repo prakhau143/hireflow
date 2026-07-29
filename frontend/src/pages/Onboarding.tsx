@@ -56,7 +56,6 @@ export default function Onboarding() {
   // Which low-confidence onboarding fields the user has explicitly resolved (accepted or edited)
   const [resolvedFields, setResolvedFields] = useState<Set<string>>(new Set())
   const [editingField, setEditingField] = useState<string | null>(null)
-  const [resolvedSkills, setResolvedSkills] = useState<Set<string>>(new Set())
 
   function setField(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -120,7 +119,6 @@ export default function Onboarding() {
     setEditingField(null)
   }
   function toggleLowConfSkill(skill: string) {
-    setResolvedSkills(s => new Set(s).add(skill))
     setForm(f => ({
       ...f,
       skills: f.skills.includes(skill) ? f.skills.filter(x => x !== skill) : [...f.skills, skill],

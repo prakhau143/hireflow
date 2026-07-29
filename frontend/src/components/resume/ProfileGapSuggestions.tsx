@@ -1,7 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Plus, Check } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
 import type { User } from '@/types'
@@ -47,7 +46,7 @@ export default function ProfileGapSuggestions({ resumeId }: { resumeId: string }
       }
       return (await api.patch('/api/users/profile', patch)).data
     },
-    onSuccess: (updated, s) => {
+    onSuccess: (updated) => {
       qc.setQueryData(['me-full'], updated)
       qc.invalidateQueries({ queryKey: ['profile-health'] })
       qc.invalidateQueries({ queryKey: ['profile-gap', resumeId] })

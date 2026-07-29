@@ -40,7 +40,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://hireflow-1fer.onrender.com' }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -111,10 +111,11 @@ jobs:
           vercel --token ${{ secrets.VERCEL_TOKEN }} \
                  --prod \
                  --yes \
-                 -e VITE_API_URL=${{ secrets.VITE_API_URL }}
+                 -e VITE_API_URL=${{ secrets.VITE_API_URL || 'https://hireflow-1fer.onrender.com' }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        continue-on-error: true
 
   # ─────────────────────────────────────────────
   # 4. Trigger Render backend deploy (main only)
@@ -128,6 +129,6 @@ jobs:
     steps:
       - name: Trigger Render deploy hook
         run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" || echo "Render deploy hook not configured - skipping"
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
