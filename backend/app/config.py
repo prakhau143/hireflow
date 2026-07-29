@@ -1,8 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from dotenv import load_dotenv
 import os
 import json
+from typing import Any, List
 
 # Load .env explicitly
 load_dotenv()
@@ -39,26 +40,30 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
-    # Allow comma-separated string or JSON array from env
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000,https://hireflow-frontend.vercel.app,https://hireflow.vercel.app"
+    # Accept any type from env, always convert to list
+    _ALLOWED_ORIGINS: Any = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000,https://hireflow-frontend.vercel.app,https://hireflow.vercel.app"
 
-    @field_validator('ALLOWED_ORIGINS', mode='before')
-    @classmethod
-    def parse_allowed_origins(cls, v):
+    @property
+    def ALLOWED_ORIGINS(self) -> List[str]:
+        v = self._ALLOWED_ORIGINS
         if isinstance(v, list):
             return v
         if isinstance(v, str):
             # Try JSON first
             try:
-                return json.loads(v)
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
             except json.JSONDecodeError:
                 # Fall back to comma-separated
                 return [origin.strip() for origin in v.split(',') if origin.strip()]
         return ["http://localhost:5173"]
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
 
 
 settings = Settings()
